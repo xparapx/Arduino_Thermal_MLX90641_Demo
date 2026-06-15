@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Arduino / build
+build/
+*.hex
+*.bin
+*.elf
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Python (UI 보조 스크립트가 추후 생길 경우)
+__pycache__/
+*.pyc
+.venv/
+venv/
