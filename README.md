@@ -2,7 +2,8 @@
 
 > 적외선 어레이 센서가 읽은 16×12 온도장을 Nano ESP32가 **보정·스트리밍**하고, 브라우저 **Web Serial 앱**이 실시간 열화상으로 렌더링하는 센서 시각화 프로젝트. 고등학교 SW·AI 융합수업용.
 
-🔗 **프로젝트 개요:** https://physics-jh.github.io/Arduino_Thermal_MLX90641_Demo/
+🔗 **프로젝트 개요:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/
+🖥️ **UI 바로 열기(Web Serial 앱):** [브라우저에서 실행](https://htmlpreview.github.io/?https://github.com/xparapx/Arduino_Thermal_MLX90641_Demo/blob/main/ui/mlx90641_thermal_ui.html) — Chrome/Edge에서 열고 **장치 연결**
 
 `MLX90641` · `Arduino Nano ESP32` · `I2C` · `Web Serial API` · `Canvas` · `흑체복사·적외선`
 
@@ -79,7 +80,7 @@ Arduino_Thermal_MLX90641_Demo/
 ## 실행 방법
 
 1. **시리얼 모니터 닫기** — IDE 시리얼 모니터가 열려 있으면 포트를 점유한다 (가장 흔한 연결 실패 원인).
-2. `ui/mlx90641_thermal_ui.html`을 Chrome/Edge에서 연다 (더블클릭, 서버 불필요).
+2. `ui/mlx90641_thermal_ui.html`을 Chrome/Edge에서 연다 (더블클릭, 서버 불필요). 또는 [브라우저에서 바로 열기](https://htmlpreview.github.io/?https://github.com/xparapx/Arduino_Thermal_MLX90641_Demo/blob/main/ui/mlx90641_thermal_ui.html).
 3. 통신 속도 `115200` 확인 → **장치 연결** → 팝업에서 Nano ESP32 포트 선택.
 4. 센서 앞에 손을 비추면 핫스팟 십자선(H)이 손을 따라가고 최고 온도가 33~36℃를 표시해야 한다.
 
@@ -114,4 +115,4 @@ Arduino_Thermal_MLX90641_Demo/
 
 ---
 
-*Maintainer: physics-jh*
+*Maintainer: xparapx*
