@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MLX90641 실시간 열화상 모니터링 시스템</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Custom Styling to elevate standard CSS to professional grade */
+    body {
+      background-color: #0f172a;
+      color: #f1f5f9;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+    .glass-panel {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    /* Thermal crosshair animation */
+    @keyframes pulse-slow {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+    .pulse-target {
+      animation: pulse-slow 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="glass-panel sticky top-0 z-50 px-6 py-4 flex flex-wrap justify-between items-center gap-4 border-b border-slate-800">
+    <div class="flex items-center gap-3">
+      <div class="h-10 w-10 rounded-lg bg-gradient-to-tr from-amber-600 via-rose-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-rose-900/30">
+        <i class="fa-solid fa-temperature-half text-white text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-orange-400 via-rose-400 to-indigo-400 bg-clip-text text-transparent">
+          MLX90641 열화상 분석 시스템
+        </h1>
+        <p class="text-xs text-slate-400">Arduino Nano ESP32 • Grove 16x12 IR Sensor (MLX90641)</p>
+      </div>
+    </div>
+
+    <!-- Status Flags -->
+    <div class="flex items-center gap-4">
+      <div id="simBadge" class="hidden px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse">
+        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> 시뮬레이션 모드 활성화됨
+      </div>
+      <div id="connectionStatus" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-400 text-xs font-medium">
+        <span class="h-2 w-2 rounded-full bg-red-500 block animate-ping" id="statusDot"></span>
+        <span id="statusText">연결되지 않음</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left Sidebar: Configuration & Controls -->
+    <section class="lg:col-span-4 flex flex-col gap-6">
+      
+      <!-- Connection Panel -->
+      <div class="glass-panel rounded-2xl p-5 shadow-xl">
+        <h2 class="text-base font-bold text-slate-200 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-circle-nodes text-indigo-400"></i> 포트 제어 및 장치 연결
+        </h2>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">통신 속도 (Baud Rate)</label>
+            <select id="baudRateSelect" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg py-2 px-3 text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="115200" selected>115200 bps (기본값)</option>
+              <option value="230400">230400 bps</option>
+              <option value="460800">460800 bps</option>
+              <option value="921600">921600 bps</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <button id="connectBtn" class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all shadow-md bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 hover:shadow-indigo-900/20 text-white">
+              <i class="fa-solid fa-plug"></i> 장치 연결
+            </button>
+            <button id="disconnectBtn" disabled class="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition-all border border-slate-700 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent text-slate-300">
+              <i class="fa-solid fa-power-off"></i> 연결 끊기
+            </button>
+          </div>
+
+          <div class="relative flex py-2 items-center">
+            <div class="flex-grow border-t border-slate-800"></div>
+            <span class="flex-shrink mx-4 text-slate-500 text-xs uppercase font-medium">또는</span>
+            <div class="flex-grow border-t border-slate-800"></div>
+          </div>
+
+          <button id="toggleSimBtn" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-xs border border-amber-600/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-all">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> 가상 시뮬레이터로 테스트하기
+          </button>
+        </div>
+      </div>
+
+      <!-- Settings Panel -->
+      <div class="glass-panel rounded-2xl p-5 shadow-xl">
+        <h2 class="text-base font-bold text-slate-200 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-indigo-400"></i> 시각화 및 필터링 설정
+        </h2>
+
+        <div class="space-y-5">
+          <!-- Colormap -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">컬러 맵 (Color Palette)</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button data-cmap="ironbow" class="cmap-btn flex flex-col items-center p-2 rounded-lg border-2 border-indigo-500 bg-slate-900/80 text-xs font-semibold">
+                <span class="w-full h-3 rounded-md bg-gradient-to-r from-purple-900 via-rose-500 to-yellow-300 mb-1"></span>
+                Ironbow (기본)
+              </button>
+              <button data-cmap="jet" class="cmap-btn flex flex-col items-center p-2 rounded-lg border-2 border-transparent hover:border-slate-700 bg-slate-900/40 text-xs text-slate-400 font-semibold">
+                <span class="w-full h-3 rounded-md bg-gradient-to-r from-blue-700 via-green-500 to-red-600 mb-1"></span>
+                Jet (레인보우)
+              </button>
+              <button data-cmap="hotcold" class="cmap-btn flex flex-col items-center p-2 rounded-lg border-2 border-transparent hover:border-slate-700 bg-slate-900/40 text-xs text-slate-400 font-semibold">
+                <span class="w-full h-3 rounded-md bg-gradient-to-r from-cyan-500 via-slate-800 to-orange-500 mb-1"></span>
+                Medical (적/청)
+              </button>
+              <button data-cmap="gray" class="cmap-btn flex flex-col items-center p-2 rounded-lg border-2 border-transparent hover:border-slate-700 bg-slate-900/40 text-xs text-slate-400 font-semibold">
+                <span class="w-full h-3 rounded-md bg-gradient-to-r from-black via-slate-500 to-white mb-1"></span>
+                Grayscale (흑백)
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter & Interpolation -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">렌더링 보간 필터 (Bilinear Interpolation)</label>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span class="text-xs text-slate-300">부드러운 열화상 그라데이션 적용</span>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="interpolateToggle" checked class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+              * 보간 필터를 끄면 MLX90641 고유의 16x12 픽셀이 계단현상으로 나타납니다.
+            </p>
+          </div>
+
+          <!-- Temperature Scale Mode -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">온도 스케일 모드</label>
+            <div class="grid grid-cols-2 gap-2 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
+              <button id="scaleAutoBtn" class="py-2 px-3 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all">
+                자동 스케일
+              </button>
+              <button id="scaleManualBtn" class="py-2 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all">
+                수동 범위 지정
+              </button>
+            </div>
+
+            <!-- Manual range config (hidden by default) -->
+            <div id="manualRangePanel" class="hidden mt-3 grid grid-cols-2 gap-2 p-3 rounded-lg bg-slate-900/60 border border-slate-800/80">
+              <div>
+                <label class="block text-[10px] text-slate-400 font-bold mb-1">최저 온도 (℃)</label>
+                <input type="number" id="minRangeInput" value="20" class="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-xs text-center text-slate-100">
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-400 font-bold mb-1">최고 온도 (℃)</label>
+                <input type="number" id="maxRangeInput" value="45" class="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-xs text-center text-slate-100">
+              </div>
+            </div>
+          </div>
+
+          <!-- Options -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">화면 분석 레이아웃</label>
+            <div class="space-y-2">
+              <label class="flex items-center gap-3 p-2 rounded-lg bg-slate-900/30 hover:bg-slate-900/60 transition-all cursor-pointer">
+                <input type="checkbox" id="showMaxMin" checked class="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500">
+                <span class="text-xs text-slate-300">최대 / 최소 온도 자동 추적 십자선</span>
+              </label>
+              <label class="flex items-center gap-3 p-2 rounded-lg bg-slate-900/30 hover:bg-slate-900/60 transition-all cursor-pointer">
+                <input type="checkbox" id="showCenter" checked class="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500">
+                <span class="text-xs text-slate-300">중앙 정렬 점 및 고정 십자선</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Center & Right: Real-time Camera and Statistics Dashboard -->
+    <section class="lg:col-span-8 flex flex-col gap-6">
+      
+      <!-- Primary Thermal Display Unit -->
+      <div class="glass-panel rounded-2xl p-5 shadow-xl flex flex-col flex-1 relative overflow-hidden">
+        
+        <!-- Camera Metadata Bar -->
+        <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-indigo-500"></span>
+            <h3 class="text-sm font-semibold text-slate-200">라이브 센서 뷰포트</h3>
+          </div>
+          <div class="flex items-center gap-4 text-xs text-slate-400">
+            <span><i class="fa-solid fa-expand text-slate-500"></i> 원본 해상도: <strong>16 × 12 px</strong></span>
+            <span><i class="fa-solid fa-gauge-high text-slate-500"></i> FPS: <strong id="fpsCounter" class="text-emerald-400">0.0</strong></span>
+          </div>
+        </div>
+
+        <!-- The Canvas Container -->
+        <div class="flex-1 flex flex-col items-center justify-center relative bg-slate-950 rounded-xl overflow-hidden min-h-[350px] border border-slate-800/60">
+          <div class="relative w-full max-w-[640px] aspect-[4/3] flex items-center justify-center">
+            
+            <!-- Offscreen calculations / Display canvas -->
+            <canvas id="thermalDisplay" class="w-full h-full object-contain rounded-lg shadow-2xl transition-all"></canvas>
+            
+            <!-- Connection overlay request -->
+            <div id="unconnectedOverlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-10">
+              <div class="h-16 w-16 bg-slate-900 rounded-full border border-slate-800 flex items-center justify-center text-slate-400 text-2xl mb-4 animate-bounce">
+                <i class="fa-solid fa-microchip"></i>
+              </div>
+              <h4 class="text-base font-bold text-slate-200">장치 연결 대기 중</h4>
+              <p class="text-xs text-slate-400 max-w-sm mt-1 mb-4 leading-relaxed">
+                좌측의 <span class="text-indigo-400 font-semibold">[장치 연결]</span> 버튼을 눌러 아두이노 Nano ESP32를 선택하거나, 간편 테스트를 위해 <span class="text-amber-400 font-semibold">[가상 시뮬레이터]</span>를 활성화하세요.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Temperature Legend Bar -->
+        <div class="mt-4">
+          <div class="flex justify-between text-[11px] text-slate-400 font-semibold mb-1">
+            <span id="legendMin">0.0 ℃</span>
+            <span>중온</span>
+            <span id="legendMax">100.0 ℃</span>
+          </div>
+          <div id="legendColorBar" class="h-3.5 w-full rounded-full shadow-inner border border-slate-800"></div>
+        </div>
+      </div>
+
+      <!-- Live Dashboard Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Max Card -->
+        <div class="glass-panel p-4 rounded-xl flex items-center gap-3 relative overflow-hidden">
+          <div class="absolute right-0 bottom-0 translate-y-2 translate-x-2 text-rose-500/10 text-5xl font-bold"><i class="fa-solid fa-temperature-arrow-up"></i></div>
+          <div class="p-2.5 bg-rose-500/10 rounded-lg text-rose-400 text-lg"><i class="fa-solid fa-arrow-up"></i></div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">최고 온도</p>
+            <h4 class="text-lg font-black text-rose-400 mt-0.5"><span id="statsMax">--.-</span> <span class="text-xs font-normal">℃</span></h4>
+          </div>
+        </div>
+
+        <!-- Min Card -->
+        <div class="glass-panel p-4 rounded-xl flex items-center gap-3 relative overflow-hidden">
+          <div class="absolute right-0 bottom-0 translate-y-2 translate-x-2 text-blue-500/10 text-5xl font-bold"><i class="fa-solid fa-temperature-arrow-down"></i></div>
+          <div class="p-2.5 bg-blue-500/10 rounded-lg text-blue-400 text-lg"><i class="fa-solid fa-arrow-down"></i></div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">최저 온도</p>
+            <h4 class="text-lg font-black text-blue-400 mt-0.5"><span id="statsMin">--.-</span> <span class="text-xs font-normal">℃</span></h4>
+          </div>
+        </div>
+
+        <!-- Center Card -->
+        <div class="glass-panel p-4 rounded-xl flex items-center gap-3 relative overflow-hidden">
+          <div class="absolute right-0 bottom-0 translate-y-2 translate-x-2 text-amber-500/10 text-5xl font-bold"><i class="fa-solid fa-crosshairs"></i></div>
+          <div class="p-2.5 bg-amber-500/10 rounded-lg text-amber-400 text-lg"><i class="fa-solid fa-crosshairs"></i></div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">중앙점 온도</p>
+            <h4 class="text-lg font-black text-amber-400 mt-0.5"><span id="statsCenter">--.-</span> <span class="text-xs font-normal">℃</span></h4>
+          </div>
+        </div>
+
+        <!-- Delta Card -->
+        <div class="glass-panel p-4 rounded-xl flex items-center gap-3 relative overflow-hidden">
+          <div class="absolute right-0 bottom-0 translate-y-2 translate-x-2 text-purple-500/10 text-5xl font-bold"><i class="fa-solid fa-circle-half-stroke"></i></div>
+          <div class="p-2.5 bg-purple-500/10 rounded-lg text-purple-400 text-lg"><i class="fa-solid fa-arrows-left-right"></i></div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">온도 편차 (ΔT)</p>
+            <h4 class="text-lg font-black text-purple-400 mt-0.5"><span id="statsDelta">--.-</span> <span class="text-xs font-normal">℃</span></h4>
+          </div>
+        </div>
+      </div>
+
+      <!-- Temperature History Log Chart -->
+      <div class="glass-panel rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-semibold text-slate-200"><i class="fa-solid fa-chart-line text-indigo-400 mr-1.5"></i> 최고 온도 트렌드 레코드 (실시간 로그)</h3>
+          <button id="clearChartBtn" class="text-[11px] text-slate-500 hover:text-slate-300"><i class="fa-solid fa-trash-can mr-1"></i>기록 초기화</button>
+        </div>
+        <div class="bg-slate-950 p-2 rounded-xl border border-slate-800/80 h-[100px]">
+          <canvas id="historyChart" class="w-full h-full"></canvas>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Foot-note -->
+  <footer class="mt-auto py-4 text-center border-t border-slate-800/60 bg-slate-950/40">
+    <p class="text-xs text-slate-500">MLX90641 Thermal Imager Desktop App Suite • Designed for high-speed I2C over Serial</p>
+  </footer>
+
+  <!-- Script logics -->
+  <script>
+    // --- Application Constants & Variables ---
+    // MLX90641: 16 x 12 = 192 픽셀 (MLX90640의 32x24과 다름!)
+    const COLS = 16;
+    const ROWS = 12;
+    const NUM_PIXELS = COLS * ROWS; // 192
+
+    let serialPort = null;
+    let reader = null;
+    let keepReading = false;
+    let serialBuffer = "";
+    
+    // UI Frame Rate Calculations
+    let lastFrameTime = performance.now();
+    let frameCount = 0;
+    let fps = 0.0;
+
+    // Simulation variables
+    let isSimulating = false;
+    let simInterval = null;
+    let simFrameIndex = 0;
+
+    // Heat distribution matrix
+    let temperatures = new Float32Array(NUM_PIXELS);
+    let minTemp = 20.0;
+    let maxTemp = 40.0;
+    let centerTemp = 30.0;
+
+    // Settings
+    let activeColormap = "ironbow";
+    let isBilinear = true;
+    let autoScale = true;
+    let manualMin = 20.0;
+    let manualMax = 45.0;
+
+    // Display configuration
+    let showMaxMinCrosshairs = true;
+    let showCenterCrosshair = true;
+
+    // History log logic
+    let tempHistory = [];
+    const maxHistoryPoints = 80;
+
+    // Canvas references
+    const canvas = document.getElementById("thermalDisplay");
+    const ctx = canvas.getContext("2d");
+    
+    // Create an offscreen canvas to render at native 16x12 and leverage browser bilinear engine
+    const offscreenCanvas = document.createElement("canvas");
+    offscreenCanvas.width = COLS;
+    offscreenCanvas.height = ROWS;
+    const offscreenCtx = offscreenCanvas.getContext("2d");
+
+    // History Chart Canvas references
+    const hChartCanvas = document.getElementById("historyChart");
+    const hChartCtx = hChartCanvas.getContext("2d");
+
+    // --- Colormap Definitions ---
+    const COLORMAPS = {
+      ironbow: (v) => {
+        // v ranges from 0 to 1
+        // Multi-segment colorstops for classic thermal look
+        if (v <= 0.0) return [10, 10, 40];
+        if (v <= 0.2) {
+          const t = v / 0.2;
+          return [Math.round(10 + t * 50), 10, Math.round(40 + t * 60)]; // 10,10,40 to 60,10,100
+        }
+        if (v <= 0.45) {
+          const t = (v - 0.2) / 0.25;
+          return [Math.round(60 + t * 120), Math.round(10 + t * 10), Math.round(100 + t * 0)]; // to 180,20,100
+        }
+        if (v <= 0.7) {
+          const t = (v - 0.45) / 0.25;
+          return [Math.round(180 + t * 50), Math.round(20 + t * 80), Math.round(100 - t * 70)]; // to 230,100,30
+        }
+        if (v <= 0.9) {
+          const t = (v - 0.7) / 0.2;
+          return [Math.round(230 + t * 20), Math.round(100 + t * 100), Math.round(30 - t * 10)]; // to 250,200,20
+        }
+        const t = (v - 0.9) / 0.1;
+        return [Math.round(250 + t * 5), Math.round(200 + t * 55), Math.round(20 + t * 210)]; // to 255,255,230
+      },
+      jet: (v) => {
+        // Blue to Cyan to Green to Yellow to Red
+        const r = clamp(Math.min(4 * v - 1.5, -4 * v + 4.5), 0, 1) * 255;
+        const g = clamp(Math.min(4 * v - 0.5, -4 * v + 3.5), 0, 1) * 255;
+        const b = clamp(Math.min(4 * v + 0.5, -4 * v + 2.5), 0, 1) * 255;
+        return [Math.round(r), Math.round(g), Math.round(b)];
+      },
+      hotcold: (v) => {
+        // Cyan cold zone, deep background, orange/red hotspots
+        if (v < 0.5) {
+          const t = v / 0.5;
+          return [Math.round(t * 30), Math.round(150 + t * 50), Math.round(200 - t * 100)]; // Cyan-blue scale
+        }
+        const t = (v - 0.5) / 0.5;
+        return [Math.round(40 + t * 215), Math.round(50 + t * 100), Math.round(100 - t * 90)]; // Hot transition
+      },
+      gray: (v) => {
+        const val = Math.round(v * 255);
+        return [val, val, val];
+      }
+    };
+
+    function clamp(val, min, max) {
+      return Math.max(min, Math.min(max, val));
+    }
+
+    // --- UI Controls Init ---
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const toggleSimBtn = document.getElementById("toggleSimBtn");
+    const baudRateSelect = document.getElementById("baudRateSelect");
+    const interpolateToggle = document.getElementById("interpolateToggle");
+    const unconnectedOverlay = document.getElementById("unconnectedOverlay");
+    const simBadge = document.getElementById("simBadge");
+    const statusText = document.getElementById("statusText");
+    const statusDot = document.getElementById("statusDot");
+    const showMaxMinCb = document.getElementById("showMaxMin");
+    const showCenterCb = document.getElementById("showCenter");
+
+    const scaleAutoBtn = document.getElementById("scaleAutoBtn");
+    const scaleManualBtn = document.getElementById("scaleManualBtn");
+    const manualRangePanel = document.getElementById("manualRangePanel");
+    const minRangeInput = document.getElementById("minRangeInput");
+    const maxRangeInput = document.getElementById("maxRangeInput");
+
+    const legendColorBar = document.getElementById("legendColorBar");
+    const legendMinText = document.getElementById("legendMin");
+    const legendMaxText = document.getElementById("legendMax");
+
+    const statsMax = document.getElementById("statsMax");
+    const statsMin = document.getElementById("statsMin");
+    const statsCenter = document.getElementById("statsCenter");
+    const statsDelta = document.getElementById("statsDelta");
+    const fpsCounter = document.getElementById("fpsCounter");
+    const clearChartBtn = document.getElementById("clearChartBtn");
+
+    // Initialize display scale settings
+    canvas.width = 640;
+    canvas.height = 480;
+
+    // --- Core Functions ---
+
+    // Configure the visual color scale bar legend in dashboard
+    function updateLegendBar() {
+      let gradientCSS = "linear-gradient(to right, ";
+      const steps = 10;
+      for (let i = 0; i <= steps; i++) {
+        const factor = i / steps;
+        const [r, g, b] = COLORMAPS[activeColormap](factor);
+        gradientCSS += `rgb(${r},${g},${b})`;
+        if (i < steps) gradientCSS += ", ";
+      }
+      gradientCSS += ")";
+      legendColorBar.style.background = gradientCSS;
+    }
+
+    // Set interactive colormap selection
+    document.querySelectorAll(".cmap-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        document.querySelectorAll(".cmap-btn").forEach(b => {
+          b.classList.remove("border-indigo-500", "text-slate-200");
+          b.classList.add("border-transparent", "text-slate-400");
+        });
+        const activeBtn = e.currentTarget;
+        activeBtn.classList.add("border-indigo-500", "text-slate-200");
+        activeBtn.classList.remove("border-transparent", "text-slate-400");
+        
+        activeColormap = activeBtn.getAttribute("data-cmap");
+        updateLegendBar();
+        renderFrame(); // Render instantly with updated palette
+      });
+    });
+
+    // Toggle Bilinear Filtering mode
+    interpolateToggle.addEventListener("change", (e) => {
+      isBilinear = e.target.checked;
+      renderFrame();
+    });
+
+    // Tracking crosshair UI switches
+    showMaxMinCb.addEventListener("change", (e) => { showMaxMinCrosshairs = e.target.checked; renderFrame(); });
+    showCenterCb.addEventListener("change", (e) => { showCenterCrosshair = e.target.checked; renderFrame(); });
+
+    // Auto vs Manual Scales logic
+    scaleAutoBtn.addEventListener("click", () => {
+      autoScale = true;
+      scaleAutoBtn.classList.add("bg-indigo-600", "text-white");
+      scaleAutoBtn.classList.remove("text-slate-400");
+      scaleManualBtn.classList.remove("bg-indigo-600", "text-white");
+      scaleManualBtn.classList.add("text-slate-400");
+      manualRangePanel.classList.add("hidden");
+      renderFrame();
+    });
+
+    scaleManualBtn.addEventListener("click", () => {
+      autoScale = false;
+      scaleManualBtn.classList.add("bg-indigo-600", "text-white");
+      scaleManualBtn.classList.remove("text-slate-400");
+      scaleAutoBtn.classList.remove("bg-indigo-600", "text-white");
+      scaleAutoBtn.classList.add("text-slate-400");
+      manualRangePanel.classList.remove("hidden");
+      renderFrame();
+    });
+
+    minRangeInput.addEventListener("input", () => {
+      manualMin = parseFloat(minRangeInput.value) || 0;
+      renderFrame();
+    });
+    maxRangeInput.addEventListener("input", () => {
+      manualMax = parseFloat(maxRangeInput.value) || 100;
+      renderFrame();
+    });
+
+    clearChartBtn.addEventListener("click", () => {
+      tempHistory = [];
+      drawHistoryChart();
+    });
+
+    // --- Web Serial API Connection ---
+    async function startSerial() {
+      try {
+        serialPort = await navigator.serial.requestPort();
+        const baudRate = parseInt(baudRateSelect.value);
+        await serialPort.open({ baudRate: baudRate });
+        
+        keepReading = true;
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = false;
+        baudRateSelect.disabled = true;
+        unconnectedOverlay.classList.add("hidden");
+        
+        // Update connection tags
+        statusText.innerText = `연결됨 (${baudRate} bps)`;
+        statusDot.classList.remove("bg-red-500");
+        statusDot.classList.add("bg-emerald-500");
+
+        // Force stop simulation if running
+        if (isSimulating) stopSimulation();
+
+        // Establish the decoding stream
+        const textDecoder = new TextDecoderStream();
+        const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable);
+        reader = textDecoder.readable.getReader();
+
+        readSerialLoop();
+      } catch (error) {
+        console.error("Serial connection error:", error);
+        alert("시리얼 포트를 여는 데 실패했습니다. 올바른 포트인지 확인해 주세요.");
+      }
+    }
+
+    async function disconnectSerial() {
+      keepReading = false;
+      if (reader) {
+        await reader.cancel();
+      }
+      if (serialPort) {
+        await serialPort.close();
+      }
+      
+      serialPort = null;
+      reader = null;
+      
+      connectBtn.disabled = false;
+      disconnectBtn.disabled = true;
+      baudRateSelect.disabled = false;
+      unconnectedOverlay.classList.remove("hidden");
+      
+      statusText.innerText = "연결되지 않음";
+      statusDot.classList.remove("bg-emerald-500");
+      statusDot.classList.add("bg-red-500");
+    }
+
+    async function readSerialLoop() {
+      serialBuffer = "";
+      try {
+        while (keepReading) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+          if (value) {
+            serialBuffer += value;
+            
+            // Look for frames delimited by linebreaks
+            let lines = serialBuffer.split("\n");
+            serialBuffer = lines.pop(); // Hold remaining slice back in buffer
+
+            for (let line of lines) {
+              parseSerialLine(line);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Serial stream reading error:", error);
+        disconnectSerial();
+      }
+    }
+
+    function parseSerialLine(line) {
+      line = line.trim();
+      if (line.startsWith("START:") && line.endsWith(":END")) {
+        const rawData = line.substring(6, line.length - 4);
+        const parts = rawData.split(",");
+        
+        if (parts.length === NUM_PIXELS) {
+          // 유효성 검사: NaN/물리범위(-40~300℃) 밖 값이 있으면 프레임 폐기
+          const buf = new Float32Array(NUM_PIXELS);
+          let valid = true;
+          for (let i = 0; i < NUM_PIXELS; i++) {
+            const v = parseFloat(parts[i]);
+            if (!isFinite(v) || v < -40 || v > 300) { valid = false; break; }
+            buf[i] = v;
+          }
+          if (valid) {
+            temperatures.set(buf);
+            onNewFrameReceived();
+          }
+        }
+      }
+    }
+
+    // --- Thermal Data Engine Processing ---
+    function onNewFrameReceived() {
+      // Analyze current temperatures
+      let currentMin = Infinity;
+      let currentMax = -Infinity;
+      let sum = 0;
+
+      for (let i = 0; i < NUM_PIXELS; i++) {
+        const t = temperatures[i];
+        if (t < currentMin) currentMin = t;
+        if (t > currentMax) currentMax = t;
+        sum += t;
+      }
+
+      minTemp = currentMin;
+      maxTemp = currentMax;
+      
+      // Calculate center pixel (16x12 기준: 6행 x 8열)
+      const centerIndex = (6 * COLS) + 8;
+      centerTemp = temperatures[centerIndex];
+
+      // Update Dashboard Metrics Cards
+      statsMax.innerText = maxTemp.toFixed(1);
+      statsMin.innerText = minTemp.toFixed(1);
+      statsCenter.innerText = centerTemp.toFixed(1);
+      statsDelta.innerText = (maxTemp - minTemp).toFixed(1);
+
+      // Save to trend history
+      tempHistory.push(maxTemp);
+      if (tempHistory.length > maxHistoryPoints) {
+        tempHistory.shift();
+      }
+
+      // Live FPS calculations
+      const now = performance.now();
+      frameCount++;
+      if (now - lastFrameTime >= 1000) {
+        fps = (frameCount * 1000) / (now - lastFrameTime);
+        fpsCounter.innerText = fps.toFixed(1);
+        frameCount = 0;
+        lastFrameTime = now;
+      }
+
+      // Draw the updated frames to screen
+      renderFrame();
+      drawHistoryChart();
+    }
+
+    // Render MLX90641 Data Frame to Active Canvas
+    function renderFrame() {
+      // 1. Establish the color scale normalization range
+      let scaleMin = autoScale ? minTemp : manualMin;
+      let scaleMax = autoScale ? maxTemp : manualMax;
+      if (scaleMin === scaleMax) scaleMax += 0.1; // Prevent zero division
+
+      legendMinText.innerText = `${scaleMin.toFixed(1)} ℃`;
+      legendMaxText.innerText = `${scaleMax.toFixed(1)} ℃`;
+
+      // 2. Build 16x12 offscreen buffer
+      const imgData = offscreenCtx.createImageData(COLS, ROWS);
+      const colorMapper = COLORMAPS[activeColormap];
+
+      for (let i = 0; i < NUM_PIXELS; i++) {
+        const t = temperatures[i];
+        // Normalize the temperature to factor in 0.0 ~ 1.0 range
+        const normalized = clamp((t - scaleMin) / (scaleMax - scaleMin), 0.0, 1.0);
+        const [r, g, b] = colorMapper(normalized);
+        
+        const idx = i * 4;
+        imgData.data[idx] = r;     // Red
+        imgData.data[idx + 1] = g; // Green
+        imgData.data[idx + 2] = b; // Blue
+        imgData.data[idx + 3] = 255; // Fully opaque Alpha
+      }
+      offscreenCtx.putImageData(imgData, 0, 0);
+
+      // 3. Scale up to primary view canvas (utilizing CSS-driven filtering engines)
+      ctx.imageSmoothingEnabled = isBilinear;
+      
+      // Ensure aspect-ratio scaled drawing
+      ctx.drawImage(offscreenCanvas, 0, 0, COLS, ROWS, 0, 0, canvas.width, canvas.height);
+
+      // 4. Draw Diagnostic Crosshairs & Labels
+      if (showMaxMinCrosshairs || showCenterCrosshair) {
+        drawHUDOverlays(scaleMin, scaleMax);
+      }
+    }
+
+    // Draw target markings directly onto upscaled canvas
+    function drawHUDOverlays(scaleMin, scaleMax) {
+      const cellWidth = canvas.width / COLS;
+      const cellHeight = canvas.height / ROWS;
+
+      // Locate Min/Max Index coordinates
+      let maxIdx = 0, minIdx = 0;
+      let maxVal = -Infinity, minVal = Infinity;
+
+      for (let i = 0; i < NUM_PIXELS; i++) {
+        if (temperatures[i] > maxVal) { maxVal = temperatures[i]; maxIdx = i; }
+        if (temperatures[i] < minVal) { minVal = temperatures[i]; minIdx = i; }
+      }
+
+      const maxCol = maxIdx % COLS;
+      const maxRow = Math.floor(maxIdx / COLS);
+      const minCol = minIdx % COLS;
+      const minRow = Math.floor(minIdx / COLS);
+
+      // Hotspot marker (Max Temp)
+      if (showMaxMinCrosshairs) {
+        const maxX = (maxCol + 0.5) * cellWidth;
+        const maxY = (maxRow + 0.5) * cellHeight;
+        drawCrosshair(maxX, maxY, "#f87171", `H: ${maxVal.toFixed(1)}°`);
+
+        // Coldspot marker (Min Temp)
+        const minX = (minCol + 0.5) * cellWidth;
+        const minY = (minRow + 0.5) * cellHeight;
+        drawCrosshair(minX, minY, "#60a5fa", `C: ${minVal.toFixed(1)}°`);
+      }
+
+      // Center point target
+      if (showCenterCrosshair) {
+        const cX = canvas.width / 2;
+        const cY = canvas.height / 2;
+        
+        // Draw standard target ring
+        ctx.strokeStyle = "rgba(251, 191, 36, 0.8)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cX, cY, 8, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(251, 191, 36, 0.9)";
+        ctx.beginPath();
+        ctx.arc(cX, cY, 2, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Label
+        ctx.font = "bold 11px system-ui";
+        ctx.fillStyle = "#fbbf24";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+        ctx.shadowBlur = 4;
+        ctx.fillText(`${centerTemp.toFixed(1)}°C`, cX + 12, cY + 4);
+        ctx.shadowBlur = 0; // reset
+      }
+    }
+
+    function drawCrosshair(x, y, color, label) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+      ctx.shadowBlur = 3;
+
+      // Draw cross lines
+      ctx.beginPath();
+      // Horiz
+      ctx.moveTo(x - 10, y); ctx.lineTo(x + 10, y);
+      // Vert
+      ctx.moveTo(x, y - 10); ctx.lineTo(x, y + 10);
+      ctx.stroke();
+
+      // Outer targeting brackets
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      // Draw Label Text
+      ctx.font = "bold 10px sans-serif";
+      ctx.fillStyle = color;
+      ctx.fillText(label, x + 12, y - 4);
+      ctx.shadowBlur = 0;
+    }
+
+    // --- Dynamic Trend Logging Graph ---
+    function drawHistoryChart() {
+      // Dynamic canvas sizing
+      hChartCanvas.width = hChartCanvas.parentElement.clientWidth;
+      hChartCanvas.height = hChartCanvas.parentElement.clientHeight;
+
+      const w = hChartCanvas.width;
+      const h = hChartCanvas.height;
+      hChartCtx.clearRect(0, 0, w, h);
+
+      if (tempHistory.length === 0) return;
+
+      // Determine local bounds for plotting
+      let maxHist = Math.max(...tempHistory);
+      let minHist = Math.min(...tempHistory);
+      if (maxHist === minHist) {
+        maxHist += 2;
+        minHist -= 2;
+      }
+      const pad = (maxHist - minHist) * 0.1;
+      maxHist += pad;
+      minHist -= pad;
+
+      // Plot line
+      hChartCtx.beginPath();
+      hChartCtx.strokeStyle = "#818cf8";
+      hChartCtx.lineWidth = 2.5;
+
+      const step = w / (maxHistoryPoints - 1);
+      const startX = w - (tempHistory.length * step);
+
+      for (let i = 0; i < tempHistory.length; i++) {
+        const val = tempHistory[i];
+        const pct = (val - minHist) / (maxHist - minHist);
+        const x = startX + (i * step);
+        const y = h - (pct * (h - 16)) - 8;
+
+        if (i === 0) {
+          hChartCtx.moveTo(x, y);
+        } else {
+          hChartCtx.lineTo(x, y);
+        }
+      }
+      hChartCtx.stroke();
+
+      // Fill gradients below trend
+      hChartCtx.lineTo(w, h);
+      hChartCtx.lineTo(startX, h);
+      const gradient = hChartCtx.createLinearGradient(0, 0, 0, h);
+      gradient.addColorStop(0, "rgba(129, 140, 248, 0.3)");
+      gradient.addColorStop(1, "rgba(129, 140, 248, 0)");
+      hChartCtx.fillStyle = gradient;
+      hChartCtx.fill();
+
+      // Label last value indicator
+      const lastVal = tempHistory[tempHistory.length - 1];
+      hChartCtx.fillStyle = "#f87171";
+      hChartCtx.font = "9px system-ui";
+      hChartCtx.fillText(`현재 최고: ${lastVal.toFixed(1)}°`, w - 100, 15);
+    }
+
+    // --- High-Fidelity Simulation Module ---
+    // Simulates an animated warm object (like a hand or a hot coffee cup) gliding in 16x12 grid
+    function toggleSimulation() {
+      if (isSimulating) {
+        stopSimulation();
+      } else {
+        startSimulation();
+      }
+    }
+
+    function startSimulation() {
+      isSimulating = true;
+      unconnectedOverlay.classList.add("hidden");
+      simBadge.classList.remove("hidden");
+      toggleSimBtn.innerText = "시뮬레이션 모드 중지";
+      toggleSimBtn.classList.replace("border-amber-600/30", "border-rose-600/30");
+      toggleSimBtn.classList.replace("bg-amber-500/10", "bg-rose-500/10");
+      toggleSimBtn.classList.replace("text-amber-400", "text-rose-400");
+      
+      // Sim refresh ticks at ~8 FPS (matching MLX set refresh)
+      simInterval = setInterval(() => {
+        generateSimulatedFrame();
+        onNewFrameReceived();
+      }, 125);
+    }
+
+    function stopSimulation() {
+      isSimulating = false;
+      clearInterval(simInterval);
+      simBadge.classList.add("hidden");
+      
+      if (!serialPort) {
+        unconnectedOverlay.classList.remove("hidden");
+      }
+
+      toggleSimBtn.innerText = "가상 시뮬레이터로 테스트하기";
+      toggleSimBtn.classList.replace("border-rose-600/30", "border-amber-600/30");
+      toggleSimBtn.classList.replace("bg-rose-500/10", "bg-amber-500/10");
+      toggleSimBtn.classList.replace("text-rose-400", "text-amber-400");
+    }
+
+    function generateSimulatedFrame() {
+      simFrameIndex += 0.05;
+      
+      // Warm source center orbits (16x12 그리드 기준)
+      const targetX1 = 8 + Math.sin(simFrameIndex) * 4;
+      const targetY1 = 6 + Math.cos(simFrameIndex * 1.5) * 2.5;
+
+      const targetX2 = 8 + Math.cos(simFrameIndex * 0.8) * 3;
+      const targetY2 = 6 + Math.sin(simFrameIndex * 1.2) * 2;
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const idx = (r * COLS) + c;
+          
+          // Background room temp (with random static thermal noise)
+          let baseTemp = 22.5 + Math.sin(r * 0.4) * 0.4 + (Math.random() - 0.5) * 0.15;
+          
+          // Distance from warm object orbits
+          const dist1 = Math.sqrt((c - targetX1) ** 2 + (r - targetY1) ** 2);
+          const dist2 = Math.sqrt((c - targetX2) ** 2 + (r - targetY2) ** 2);
+
+          // Render warm object Gaussian blooms (simulating human temperature signature)
+          const heatBloom1 = Math.exp(-dist1 / 2) * 14.5; // Up to ~37C
+          const heatBloom2 = Math.exp(-dist2 / 1.5) * 8.0;
+
+          temperatures[idx] = baseTemp + heatBloom1 + heatBloom2;
+        }
+      }
+    }
+
+    // --- Wire Up Event Listeners ---
+    connectBtn.addEventListener("click", startSerial);
+    disconnectBtn.addEventListener("click", disconnectSerial);
+    toggleSimBtn.addEventListener("click", toggleSimulation);
+
+    // Initial palette update
+    updateLegendBar();
+
+    // Check if browser supports Web Serial API
+    if (!("serial" in navigator)) {
+      statusText.innerText = "지원 안 함 (Web Serial 미지원)";
+      connectBtn.disabled = true;
+      alert("현재 브라우저가 Web Serial API를 지원하지 않습니다. 구글 크롬(Chrome)이나 엣지(Edge) 브라우저를 이용해 주세요!");
+    }
+  </script>
+</body>
+</html>
