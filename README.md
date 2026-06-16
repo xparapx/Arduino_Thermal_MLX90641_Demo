@@ -75,9 +75,9 @@ Arduino_Thermal_MLX90641_Demo/
 
 ## 최초 1회 설정 (라이브러리 설치)
 
-1. **라이브러리 ZIP 설치** — Arduino IDE `스케치 → 라이브러리 포함하기 → .ZIP 라이브러리 추가`에서 `lib/MLX9064x_Universal.zip` 선택. **driver.cpp를 손으로 패치할 필요 없음** (ZIP 안에 이미 ESP32 패치본 + 칩 자동판별 포함).
-2. **펌웨어 업로드** — `firmware/mlx90641_serial.ino` → 보드 `Arduino Nano ESP32`, 포트 선택 후 업로드. 헤더명은 `MLX90641_API.h`, `MLX9064X_I2C_Driver.h`(**X 대문자**).
-3. **1차 확인** — (선택) 먼저 `firmware/i2c_diagnostic.ino` 또는 라이브러리 예제 `01_Diagnostic`을 올려 `ACK: OK` / `CHIP: MLX90641 (192 px)` / `통신 OK`를 확인. 이후 스트리밍 펌웨어의 시리얼 모니터(115200)에서 `START:25.31,...:END` 줄이 흐르고 값이 실온(20~30℃)이면 정상.
+1. **라이브러리 ZIP 설치** — Arduino IDE `스케치 → 라이브러리 포함하기 → .ZIP 라이브러리 추가`에서 `lib/MLX9064x_Universal.zip` 선택. **driver.cpp를 손으로 패치할 필요 없음** (ZIP 안에 이미 ESP32 패치본 + 칩 자동판별 포함). 기존 `Seeed_Arduino_MLX9064x`가 설치돼 있으면 헤더 충돌 방지를 위해 **삭제 권장**.
+2. **펌웨어 업로드** — `firmware/mlx90641_serial.ino` → 보드 `Arduino Nano ESP32`, 포트 선택 후 업로드. 스케치는 래퍼 헤더 **`MLX9064x_Universal.h` 하나만** include 하면 되고, 칩(90641/90640)은 **자동 판별**되므로 직접 고를 필요 없음. (이 펌웨어는 라이브러리 동봉 예제 `02_SerialStream_UI`와 동일 — `파일 → 예제 → MLX9064x_Universal`에서도 열 수 있음.)
+3. **1차 확인** — (선택) 먼저 `firmware/i2c_diagnostic.ino`(라이브러리 무관 raw 점검) 또는 라이브러리 예제 `01_Diagnostic`을 올려 `ACK: OK` / `MLX90641 (16x12)` / `통신 OK`를 확인. 이후 스트리밍 펌웨어의 시리얼 모니터(115200)에서 부팅 시 `INFO:CHIP=MLX90641,COLS=16,ROWS=12` → `START:25.31,...:END` 줄이 흐르고 값이 실온(20~30℃)이면 정상.
 
 ## 실행 방법
 
@@ -90,7 +90,7 @@ Arduino_Thermal_MLX90641_Demo/
 
 ## 핵심 사양
 
-**시리얼 프로토콜** — 프레임당 한 줄: `START:t0,t1,...,t191:END` (192개 온도값, 115200bps)
+**시리얼 프로토콜** — 부팅 시 1회 `INFO:CHIP=...,COLS=..,ROWS=..` (해상도 자동 통지), 이후 프레임당 한 줄 `START:t0,t1,...,tN:END` (115200bps). 픽셀 수 N+1은 칩에 따라 **자동**: MLX90641=192, MLX90640=768. 프레임 I2C 실패 시 `ERR_FRAME:<code>`.
 
 **기본 보정값** — 방사율 0.95, TA_SHIFT 8. 피부는 0.97~0.98, 금속면은 별도 보정 필요. 정밀 측정 시 기준 온도계로 1점 교정.
 
@@ -100,9 +100,9 @@ Arduino_Thermal_MLX90641_Demo/
 
 | 증상 | 원인 / 해결 |
 |---|---|
-| 전 픽셀 NaN, Vdd=inf | 칩-API 불일치 → `0x240A` bit6 확인, 올바른 API 사용 |
+| 전 픽셀 NaN, Vdd=inf | 칩-API 불일치 (동봉 라이브러리는 자동판별로 예방) → 다른 라이브러리 혼용 여부 확인, `MLX9064x_Universal.zip`만 사용 |
 | 프레임마다 동일한 비정상 값(동결) | 공식 라이브러리 사용 중 → `lib/MLX9064x_Universal.zip`(패치본)으로 재설치 |
-| `MLX90640_I2C_Driver.h: No such file` | 헤더명은 `MLX9064X_I2C_Driver.h` (X 대문자) |
+| 컴파일 시 `... .h: No such file` | 스케치는 `MLX9064x_Universal.h` **하나만** include (내부 API 헤더 직접 포함 불필요). 구버전 Seeed 라이브러리 잔존 시 삭제 |
 | 0x33 미검출 | Grove 케이블 I2C 포트(A4/A5)·전원 LED 확인, 케이블 교체 |
 | 간헐적 ERR_FRAME | I2C 400k→100kHz 하향, 케이블 최단화 |
 | UI에서 포트 안 보임 | IDE 시리얼 모니터 닫기, Chrome/Edge 확인, 케이블 재연결 |
