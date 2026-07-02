@@ -2,9 +2,9 @@
 
 > 적외선 어레이 센서가 읽은 16×12 온도장을 Nano ESP32가 **보정·스트리밍**하고, 브라우저 **Web Serial 앱**이 실시간 열화상으로 렌더링하는 센서 시각화 프로젝트. 고등학교 SW·AI 융합수업용.
 
-🔗 **프로젝트 개요:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/  
-🖥️ **UI 바로 열기(Web Serial 앱):** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/ui/mlx90641_thermal_ui.html  
-📖 **데모 매뉴얼:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/manuals/MLX90641_%EB%8D%B0%EB%AA%A8%EB%A7%A4%EB%89%B4%EC%96%BC.html
+🔗 **프로젝트개요:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/
+🖥️ **WebUI:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/ui/mlx90641_thermal_ui.html
+📘 **매뉴얼:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/manual.html
 
 `MLX90641` · `Arduino Nano ESP32` · `I2C` · `Web Serial API` · `Canvas` · `흑체복사·적외선`
 
@@ -60,10 +60,9 @@ Arduino_Thermal_MLX90641_Demo/
 │  └─ mlx90641_serial.ino             # CSV 스트리밍 펌웨어
 ├─ ui/
 │  └─ mlx90641_thermal_ui.html        # Web Serial 열화상 UI 앱
-├─ manuals/
-│  └─ MLX90641_데모매뉴얼.html          # 트러블슈팅·운용 매뉴얼 (HTML)
 ├─ docs/                              # ★ GitHub Pages 게시 폴더
 │  ├─ index.html                      # 프로젝트 개요 (랜딩)
+│  ├─ manual.html                     # 운용·트러블슈팅 매뉴얼
 │  └─ ui/
 │     └─ mlx90641_thermal_ui.html     # UI 앱 Pages 게시 사본 (ui/ 원본과 동일)
 ├─ README.md
@@ -108,7 +107,7 @@ Arduino_Thermal_MLX90641_Demo/
 | 간헐적 ERR_FRAME | I2C 400k→100kHz 하향, 케이블 최단화 |
 | UI에서 포트 안 보임 | IDE 시리얼 모니터 닫기, Chrome/Edge 확인, 케이블 재연결 |
 
-> 전체 진단 타임라인·라이브러리 이슈 조사·증상별 상세표는 `manuals/MLX90641_데모매뉴얼.html` 참조.
+> 전체 진단 타임라인·라이브러리 이슈 조사·증상별 상세표는 `docs/manual.html` 참조 (웹: https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/manual.html).
 
 ## 작업 로그
 

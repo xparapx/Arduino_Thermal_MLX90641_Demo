@@ -6,137 +6,293 @@
 <title>MLX90641 실시간 열화상 데모 — 프로젝트 개요</title>
 <style>
   :root{
-    --ink:#1a2332; --ink-soft:#4a5568; --paper:#fbfaf7; --card:#fff;
-    --line:#e2ddd3; --accent:#c2410c; --accent-soft:#fff1e8;
-    --cool:#1d4ed8; --code-bg:#16202e; --code-ink:#d7e3f4;
+    --bg:#0d1117; --panel:#141b24; --panel2:#1a2330;
+    --ink:#e6edf3; --dim:#8b98a8; --line:#243140;
+    --teal:#22d3c5; --teal-dim:#0e7a73;
+    --amber:#f4b740; --violet:#a78bfa; --rose:#fb7185;
+    --green:#4ade80;
+    --mono:'SF Mono','Consolas','Noto Sans Mono CJK KR',monospace;
+    --sans:'Pretendard','Noto Sans CJK KR','Apple SD Gothic Neo',system-ui,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',system-ui,sans-serif;
-       background:var(--paper);color:var(--ink);line-height:1.75;font-size:15px}
-  .wrap{max-width:880px;margin:0 auto;padding:0 24px 80px}
-  header.doc{border-bottom:3px solid var(--ink);padding:48px 0 28px;margin-bottom:8px}
-  .doc-kicker{font-size:12px;letter-spacing:.18em;text-transform:uppercase;
-              color:var(--accent);font-weight:700;margin-bottom:10px}
-  header.doc h1{font-size:30px;line-height:1.3;font-weight:800;letter-spacing:-.01em}
-  .lead{font-size:16px;color:var(--ink-soft);margin:16px 0 18px}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .chip{font-size:12.5px;font-weight:600;color:var(--accent);
-        background:var(--accent-soft);border:1px solid #f3d9a8;border-radius:999px;padding:4px 12px}
-  section{margin-bottom:48px;padding-top:14px}
-  h2{font-size:21px;font-weight:800;padding-bottom:10px;margin:30px 0 20px;
-     border-bottom:2px solid var(--line)}
-  h2 .secnum{color:var(--accent);margin-right:8px;font-variant-numeric:tabular-nums}
-  h3{font-size:15px;font-weight:700;margin:22px 0 8px;color:var(--ink-soft)}
-  p{margin-bottom:12px}
-  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
-  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left}
-  th{background:var(--accent-soft);font-weight:700}
-  pre{background:var(--code-bg);color:var(--code-ink);border-radius:10px;
-      padding:16px 18px;overflow:auto;font-size:13px;line-height:1.6;margin:14px 0;
-      font-family:'SF Mono',Consolas,monospace}
-  .flow{background:var(--card);border:1px solid var(--line);border-radius:10px;
-        padding:18px;font-size:13px;line-height:1.9;overflow:auto;
-        font-family:'SF Mono',Consolas,monospace;white-space:pre}
-  .callout{border-radius:10px;padding:14px 18px;margin:16px 0;
-           background:var(--accent-soft);border:1px solid #f3d9a8;font-size:14px}
-  .callout b{color:var(--accent)}
-  a{color:var(--accent)}
-  .links{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px}
-  .links a{display:inline-block;font-weight:600;text-decoration:none;
-           border:1px solid var(--line);border-radius:8px;padding:8px 14px;background:var(--card)}
-  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);
-         font-size:13px;color:var(--ink-soft)}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.65;-webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(34,211,197,.06), transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(251,113,133,.05), transparent 40%);}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+
+  /* ===== HERO ===== */
+  header{padding:64px 0 40px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--teal);margin-bottom:18px;
+    display:flex;align-items:center;gap:10px}
+  .eyebrow::before{content:"";width:28px;height:1px;background:var(--teal)}
+  h1{font-size:clamp(32px,5vw,52px);font-weight:800;line-height:1.1;
+    letter-spacing:-.02em;margin-bottom:8px}
+  h1 .accent{color:var(--teal)}
+  .tagline{font-size:clamp(16px,2.2vw,21px);color:var(--dim);font-weight:400;
+    max-width:680px;margin-top:16px}
+  .meta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+  .chip{font-family:var(--mono);font-size:12px;padding:6px 13px;border-radius:999px;
+    border:1px solid var(--line);color:var(--dim);background:var(--panel)}
+  .chip.on{border-color:var(--teal-dim);color:var(--teal)}
+  .cta-row{margin-top:26px;display:flex;flex-wrap:wrap;gap:12px}
+  .cta{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:14px;
+    color:#06211f;background:var(--teal);border:1px solid var(--teal);
+    border-radius:10px;padding:10px 18px;text-decoration:none;transition:filter .12s}
+  .cta:hover{filter:brightness(1.12);text-decoration:none}
+  .cta.ghost{background:transparent;color:var(--teal);border-color:var(--teal-dim)}
+  .cta.ghost:hover{background:rgba(34,211,197,.08)}
+
+  /* ===== SECTION ===== */
+  section{padding:48px 0;border-bottom:1px solid var(--line)}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:26px}
+  .sec-num{font-family:var(--mono);font-size:13px;color:var(--teal);font-weight:600}
+  h2{font-size:24px;font-weight:700;letter-spacing:-.01em}
+  .sec-sub{color:var(--dim);font-size:15px;margin-top:-16px;margin-bottom:26px}
+
+  /* ===== 요약 카드 ===== */
+  .summary{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:28px 30px;font-size:16px;line-height:1.8}
+  .summary strong{color:var(--teal);font-weight:600}
+  .summary .lead{font-size:18px;color:var(--ink);margin-bottom:14px}
+  .summary .edu{margin-top:18px;padding:14px 18px;border:1px solid var(--teal-dim);
+    border-radius:12px;background:var(--panel2);font-size:14.5px;color:var(--dim)}
+  .summary .edu b{color:var(--teal)}
+
+  /* ===== 흐름도 (시그니처) ===== */
+  .flow{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:34px 24px;overflow-x:auto}
+  .pipe{display:flex;align-items:stretch;gap:0;min-width:760px}
+  .node{flex:1;background:var(--panel2);border:1px solid var(--line);
+    border-radius:12px;padding:16px 14px;position:relative;text-align:center}
+  .node .ic{font-size:24px;margin-bottom:8px;line-height:1}
+  .node .nt{font-weight:700;font-size:14px;margin-bottom:5px}
+  .node .nd{font-size:11.5px;color:var(--dim);line-height:1.45}
+  .node .tag{font-family:var(--mono);font-size:10px;color:var(--teal);
+    margin-top:8px;display:block;letter-spacing:.04em}
+  .arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:0 6px;color:var(--teal);min-width:54px}
+  .arrow .lbl{font-family:var(--mono);font-size:9.5px;color:var(--dim);
+    margin-bottom:3px;white-space:nowrap}
+  .arrow .ln{font-size:18px;line-height:1}
+  .n1{border-top:2px solid var(--teal)}
+  .n2{border-top:2px solid var(--amber)}
+  .n3{border-top:2px solid var(--violet)}
+  .n4{border-top:2px solid var(--rose)}
+  .n5{border-top:2px solid var(--green)}
+
+  /* ===== 2단 그리드 ===== */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:680px){.grid2{grid-template-columns:1fr}.pipe{min-width:680px}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:22px 24px}
+  .card h3{font-size:15px;font-weight:700;margin-bottom:16px;
+    display:flex;align-items:center;gap:9px}
+  .card h3 .dot{width:8px;height:8px;border-radius:50%}
+  .dot.hw{background:var(--amber)} .dot.sw{background:var(--violet)}
+  ul.clean{list-style:none}
+  ul.clean li{padding:7px 0;border-bottom:1px solid var(--line);
+    font-size:14px;display:flex;justify-content:space-between;gap:12px}
+  ul.clean li:last-child{border-bottom:none}
+  ul.clean .k{color:var(--ink);font-weight:500}
+  ul.clean .v{color:var(--dim);font-family:var(--mono);font-size:12px;
+    text-align:right;flex-shrink:0}
+
+  /* ===== 기술스택 ===== */
+  .stack{display:flex;flex-wrap:wrap;gap:10px}
+  .tech{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:11px 15px;font-size:13px;display:flex;align-items:center;gap:8px}
+  .tech .b{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:5px;
+    background:var(--panel2);color:var(--teal);border:1px solid var(--teal-dim)}
+
+  /* ===== 디렉터리 ===== */
+  .tree{background:#0a0e14;border:1px solid var(--line);border-radius:12px;
+    padding:22px 24px;font-family:var(--mono);font-size:13px;line-height:1.9;
+    color:var(--dim);overflow-x:auto;white-space:pre}
+  .tree .d{color:var(--teal)} .tree .f{color:var(--ink)}
+  .tree .c{color:#5a6b7d}
+
+  /* ===== 콜아웃 · 링크 ===== */
+  .callout{margin-top:22px;background:var(--panel);border:1px solid var(--teal-dim);
+    border-radius:14px;padding:20px 24px;font-size:14.5px;color:var(--dim);line-height:1.75}
+  .callout b{color:var(--teal)}
+  .callout code{font-family:var(--mono);font-size:12.5px;color:var(--ink);
+    background:var(--panel2);padding:1px 6px;border-radius:5px}
+  .links{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
+
+  footer{padding:36px 0 60px;color:var(--dim);font-size:13px;text-align:center}
+  footer code{font-family:var(--mono);color:var(--teal);background:var(--panel);
+    padding:2px 7px;border-radius:5px}
+  a{color:var(--teal);text-decoration:none}
+  a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header class="doc">
-    <div class="doc-kicker">On-Sensor Thermal Imaging · SW·AI 융합수업</div>
-    <h1>MLX90641 실시간 열화상 데모</h1>
-    <p class="lead">적외선 어레이 센서가 읽은 16×12 온도장을 Nano ESP32가 보정·스트리밍하고,
-    브라우저 Web Serial 앱이 실시간 열화상으로 그려내는 센서 시각화 프로젝트.</p>
-    <div class="chips">
-      <span class="chip">MLX90641</span><span class="chip">Arduino Nano ESP32</span>
-      <span class="chip">I2C</span><span class="chip">Web Serial API</span>
-      <span class="chip">Canvas 렌더링</span><span class="chip">흑체복사·적외선</span>
+<header>
+  <div class="wrap">
+    <div class="eyebrow">On-Sensor Thermal Imaging</div>
+    <h1>MLX90641<br><span class="accent">실시간 열화상</span> 데모</h1>
+    <p class="tagline">적외선 어레이 센서가 읽은 16×12 온도장을 <strong>Nano ESP32가 보정·스트리밍</strong>하고, 브라우저 Web Serial 앱이 실시간 열화상으로 그려내는 센서 시각화 프로젝트.</p>
+    <div class="meta-row">
+      <span class="chip on">MLX90641</span>
+      <span class="chip on">Arduino Nano ESP32</span>
+      <span class="chip on">I2C</span>
+      <span class="chip on">Web Serial API</span>
+      <span class="chip on">Canvas</span>
+      <span class="chip on">흑체복사·적외선</span>
+      <span class="chip">고등학교 SW·AI 융합수업</span>
     </div>
-  </header>
+    <div class="cta-row">
+      <a class="cta" href="ui/mlx90641_thermal_ui.html">🖥️ WebUI (열화상 앱)</a>
+      <a class="cta ghost" href="manual.html">📘 매뉴얼</a>
+    </div>
+  </div>
+</header>
 
-  <section>
-    <h2><span class="secnum">01</span>프로젝트 요약</h2>
-    <p>MLX90641 적외선 어레이 센서(16×12, 192픽셀)의 온도 프레임을 Nano ESP32가
-    I2C로 읽어 보정 계산 후 USB 시리얼로 PC에 보내고, 브라우저의 Web Serial 앱이
-    이를 실시간 열화상으로 렌더링한다. 클라우드도 모델 학습도 없는,
-    <b>센서 → 보정 → 스트리밍 → 시각화</b>의 순수 측정·시각화 파이프라인이다.</p>
-    <div class="callout"><b>교육 포인트</b> — 보간 OFF + 수동 스케일로 두면 손·금속·유리의
-    온도가 다르게 보이는 이유(방사율 차이)를 흑체복사·적외선 단원과 직접 연결해 토론할 수 있다.</div>
-  </section>
+<!-- 1. 프로젝트 요약 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">01</span><h2>프로젝트 요약</h2></div>
+    <div class="summary">
+      <p class="lead">"열은 어떻게 보이는가"를 <strong>센서로 직접 측정하고, 보정하고, 눈으로 보는</strong> 프로젝트입니다.</p>
+      <p>MLX90641 적외선 어레이 센서(16×12, 192픽셀)의 온도 프레임을 <strong>Nano ESP32</strong>가 I2C로 읽어 보정 계산 후 USB 시리얼로 PC에 전송하고, 브라우저의 <strong>Web Serial</strong> HTML 앱이 이를 실시간 열화상으로 렌더링합니다. 클라우드도 모델 학습도 없는 <strong>순수 측정·시각화</strong> 파이프라인이라, 흑체복사·적외선·방사율 단원과 곧장 연결됩니다.</p>
+      <div class="edu"><b>교육 포인트</b> — 보간 OFF + 수동 스케일로 두면 손·금속·유리의 온도가 다르게 보이는 이유(방사율 차이)를 흑체복사·적외선 단원과 직접 연결해 토론할 수 있습니다.</div>
+    </div>
+  </div>
+</section>
 
-  <section>
-    <h2><span class="secnum">02</span>프로세스 흐름도</h2>
-    <div class="flow"> ① 센서 측정        ② 보정 계산        ③ 시리얼 스트리밍     ④ 수신·파싱        ⑤ 시각화
-  16×12 IR 프레임     온도 변환            CSV 한 줄/프레임       Web Serial          캔버스 열화상
-  + Ta + Vdd        (방사율 0.95)        115200bps             깨진 프레임 폐기      통계·트렌드
- [MLX90641] ─I2C→ [Nano ESP32] ─USB→ START:..:END ─수신→ [브라우저 앱] ─render→ [화면]</div>
-  </section>
+<!-- 2. 프로세스 흐름도 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">02</span><h2>프로세스 흐름도</h2></div>
+    <p class="sec-sub">적외선이 온도값이 되고, 시리얼을 타고, 사람이 보는 열화상이 되기까지</p>
+    <div class="flow">
+      <div class="pipe">
+        <div class="node n1">
+          <div class="ic">🌡️</div>
+          <div class="nt">① 센서 측정</div>
+          <div class="nd">16×12 IR 프레임 + Ta + Vdd</div>
+          <span class="tag">MLX90641</span>
+        </div>
+        <div class="arrow"><span class="lbl">I2C</span><span class="ln">→</span></div>
+        <div class="node n2">
+          <div class="ic">🧮</div>
+          <div class="nt">② 보정 계산</div>
+          <div class="nd">온도 변환 (방사율 0.95)</div>
+          <span class="tag">Nano ESP32</span>
+        </div>
+        <div class="arrow"><span class="lbl">USB</span><span class="ln">→</span></div>
+        <div class="node n3">
+          <div class="ic">📤</div>
+          <div class="nt">③ 시리얼 스트리밍</div>
+          <div class="nd">CSV 한 줄/프레임 송신</div>
+          <span class="tag">115200bps</span>
+        </div>
+        <div class="arrow"><span class="lbl">START:..:END</span><span class="ln">→</span></div>
+        <div class="node n4">
+          <div class="ic">📥</div>
+          <div class="nt">④ 수신·파싱</div>
+          <div class="nd">깨진 프레임 폐기</div>
+          <span class="tag">Web Serial</span>
+        </div>
+        <div class="arrow"><span class="lbl">render</span><span class="ln">→</span></div>
+        <div class="node n5">
+          <div class="ic">🔥</div>
+          <div class="nt">⑤ 시각화</div>
+          <div class="nd">캔버스 열화상 · 통계·트렌드</div>
+          <span class="tag">Canvas</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <section>
-    <h2><span class="secnum">03</span>준비물</h2>
-    <h3>하드웨어</h3>
-    <table>
-      <tr><th>항목</th><th>비고</th></tr>
-      <tr><td>Arduino Nano ESP32</td><td>USB-C, ESP32-S3</td></tr>
-      <tr><td>Grove Thermal Imaging Camera (MLX90641)</td><td>I2C 0x33 · 16×12</td></tr>
-      <tr><td>Grove 케이블</td><td>I2C 포트: SDA=A4, SCL=A5</td></tr>
-      <tr><td>PC</td><td>Chrome 또는 Edge (Web Serial 필요)</td></tr>
-    </table>
-    <h3>소프트웨어 · 라이브러리</h3>
-    <table>
-      <tr><th>도구</th><th>비고</th></tr>
-      <tr><td>Arduino IDE 2.x</td><td>보드: Arduino Nano ESP32</td></tr>
-      <tr><td>MLX9064x_Universal (동봉)</td><td><b><code>lib/MLX9064x_Universal.zip</code> ZIP 설치</b> · ESP32 패치본 + 칩 자동판별</td></tr>
-      <tr><td>Web 브라우저</td><td>Chrome/Edge — Safari·Firefox 불가</td></tr>
-    </table>
-  </section>
+<!-- 3. 준비물 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">03</span><h2>준비물</h2></div>
+    <div class="grid2">
+      <div class="card">
+        <h3><span class="dot hw"></span>하드웨어 (실물)</h3>
+        <ul class="clean">
+          <li><span class="k">Arduino Nano ESP32</span><span class="v">ESP32-S3 · USB-C</span></li>
+          <li><span class="k">Grove Thermal Imaging Camera</span><span class="v">MLX90641 · I2C 0x33 · 16×12</span></li>
+          <li><span class="k">Grove 케이블</span><span class="v">SDA=A4 · SCL=A5</span></li>
+          <li><span class="k">PC</span><span class="v">Chrome / Edge (Web Serial)</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="dot sw"></span>소프트웨어 · 라이브러리</h3>
+        <ul class="clean">
+          <li><span class="k">Arduino IDE</span><span class="v">2.x</span></li>
+          <li><span class="k">MLX9064x_Universal (동봉)</span><span class="v">lib/*.zip · ESP32 패치 + 칩 자동판별 ★</span></li>
+          <li><span class="k">Chrome / Edge</span><span class="v">Safari·Firefox 불가</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout"><b>펌웨어는 헤더 하나</b> — 스케치는 래퍼 헤더 <code>MLX9064x_Universal.h</code> <b>하나만</b> include 하면 됩니다. 칩(90641/90640)은 EEPROM <code>0x240A</code> bit6으로 <b>자동 판별</b>되어 부팅 시 <code>INFO:CHIP=MLX90641,COLS=16,ROWS=12</code> 한 줄로 통지되고, 픽셀 수(192/768)도 자동으로 맞춰집니다.</div>
+  </div>
+</section>
 
-  <section>
-    <h2><span class="secnum">04</span>기술 스택</h2>
-    <ul style="margin-left:20px">
-      <li><b>센서</b> — MLX90641 적외선 어레이, 공장 보정값 EEPROM 내장</li>
-      <li><b>MCU</b> — Arduino Nano ESP32 (ESP32-S3), I2C 100kHz</li>
-      <li><b>통신</b> — I2C(센서), USB Serial 115200bps(CSV 스트리밍)</li>
-      <li><b>UI</b> — Web Serial API, Canvas 렌더링·컬러맵·보간, 단일 HTML</li>
-    </ul>
-  </section>
+<!-- 4. 기술 스택 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">04</span><h2>기술 스택</h2></div>
+    <div class="stack">
+      <div class="tech"><span class="b">센서</span>MLX90641 적외선 어레이 · EEPROM 공장 보정값</div>
+      <div class="tech"><span class="b">MCU</span>Arduino Nano ESP32 (ESP32-S3)</div>
+      <div class="tech"><span class="b">통신</span>I2C 100kHz (센서)</div>
+      <div class="tech"><span class="b">통신</span>USB Serial 115200bps · CSV</div>
+      <div class="tech"><span class="b">펌웨어</span>MLX9064x_Universal.h 단일 include · 칩 자동판별</div>
+      <div class="tech"><span class="b">UI</span>Web Serial API · 단일 HTML (더블클릭 실행)</div>
+      <div class="tech"><span class="b">UI</span>Canvas 렌더링 · 컬러맵 4종(Ironbow/Jet/Medical/Grayscale) · 보간</div>
+      <div class="tech"><span class="b">UI</span>통계 카드(최고·최저·중앙·ΔT) · 트렌드 로그 · 가상 시뮬레이터</div>
+    </div>
+  </div>
+</section>
 
-  <section>
-    <h2><span class="secnum">05</span>저장소 구조</h2>
-    <pre>Arduino_Thermal_MLX90641_Demo/
-├─ lib/
-│  └─ MLX9064x_Universal.zip      # ★ ESP32 패치 + 칩 자동판별 (ZIP 설치)
-├─ firmware/                      # 보드 펌웨어 (.ino)
-│  ├─ i2c_diagnostic.ino          # 라이브러리 무관 30초 진단
-│  └─ mlx90641_serial.ino         # CSV 스트리밍 펌웨어
-├─ ui/
-│  └─ mlx90641_thermal_ui.html    # Web Serial 열화상 UI 앱
-├─ manuals/
-│  └─ MLX90641_데모매뉴얼.html      # 트러블슈팅·운용 매뉴얼
-├─ docs/
-│  └─ index.html                  # 이 개요 페이지
-├─ README.md
-└─ .gitignore</pre>
+<!-- 5. 저장소 구조 -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">05</span><h2>저장소 구조</h2></div>
+    <pre class="tree">
+<span class="d">Arduino_Thermal_MLX90641_Demo/</span>
+├─ <span class="d">lib/</span>
+│  └─ <span class="f">MLX9064x_Universal.zip</span>      <span class="c"># ★ ESP32 패치 + 칩 자동판별 라이브러리 (ZIP 설치)</span>
+├─ <span class="d">firmware/</span>                      <span class="c"># 보드 펌웨어 (.ino)</span>
+│  ├─ <span class="f">i2c_diagnostic.ino</span>          <span class="c"># 라이브러리 무관 30초 진단</span>
+│  └─ <span class="f">mlx90641_serial.ino</span>         <span class="c"># CSV 스트리밍 펌웨어 (= 예제 02_SerialStream_UI)</span>
+├─ <span class="d">ui/</span>
+│  └─ <span class="f">mlx90641_thermal_ui.html</span>    <span class="c"># Web Serial UI 앱 · 로컬 더블클릭용</span>
+├─ <span class="d">docs/</span>                          <span class="c"># ★ GitHub Pages 게시 폴더</span>
+│  ├─ <span class="f">index.html</span>                  <span class="c"># 프로젝트 개요 (이 페이지)</span>
+│  ├─ <span class="f">manual.html</span>                 <span class="c"># 운용·트러블슈팅 매뉴얼</span>
+│  └─ <span class="d">ui/</span>
+│     └─ <span class="f">mlx90641_thermal_ui.html</span> <span class="c"># UI 앱 Pages 사본 (ui/ 원본과 동일)</span>
+├─ <span class="f">README.md</span>
+└─ <span class="f">.gitignore</span>
+    </pre>
     <div class="callout"><b>구축 핵심</b> — 초기 가짜 패턴(H:7,844℃·NaN)의 원인은 하드웨어가 아니라
     ① 칩 오인(90640 가정 → 실제 90641) ② 공식 라이브러리 I2C 드라이버의 ESP32 비호환,
-    두 겹의 소프트웨어 문제였다. 동봉한 <code>lib/MLX9064x_Universal.zip</code>은 이 두 가지를
-    이미 해결(패치된 드라이버 + 칩 자동판별)했으므로 ZIP 설치만으로 동작한다. 진단 과정은 운용 매뉴얼 참조.</div>
+    두 겹의 소프트웨어 문제였습니다. 동봉한 <code>lib/MLX9064x_Universal.zip</code>은 이 두 가지를
+    이미 해결(패치된 드라이버 + 칩 자동판별)했으므로 <b>ZIP 설치만으로 동작</b>합니다. 진단 과정은 운용 매뉴얼 참조.</div>
     <div class="links">
-      <a href="../manuals/MLX90641_데모매뉴얼.html">📘 운용 매뉴얼 열기</a>
-      <a href="../ui/mlx90641_thermal_ui.html">🖥️ UI 앱 열기</a>
+      <a class="cta" href="ui/mlx90641_thermal_ui.html">🖥️ WebUI (열화상 앱) 열기</a>
+      <a class="cta ghost" href="manual.html">📘 운용 매뉴얼 열기</a>
     </div>
-  </section>
+  </div>
+</section>
 
-  <footer>Maintainer: xparapx · 고등학교 SW·AI 융합수업용 데모</footer>
-</div>
+<footer>
+  <div class="wrap">
+    <p>Arduino_Thermal_MLX90641_Demo · xparapx</p>
+    <p style="margin-top:8px">고등학교 SW·AI 융합수업용 데모 &nbsp;·&nbsp; 상세는 <code>docs/manual.html</code> 참조</p>
+  </div>
+</footer>
+
 </body>
 </html>

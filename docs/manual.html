@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MLX90641 열화상 데모 — 운용·트러블슈팅 매뉴얼</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --surface:#ffffff; --ink:#2C3E50; --primary:#3498DB; --secondary:#E67E22;
+    --accent:#16A085; --muted:#ECF0F1; --line:#dfe6e9; --warn:#E74C3C;
+    --side:#1f2a37; --side-ink:#aeb9c6; --side-on:#3498DB; --code-bg:#1e2430; --code-ink:#e6edf3;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:#d9e0e6; color:var(--ink);
+    font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif; line-height:1.6;}
+  .stage{width:min(95vw,1320px); aspect-ratio:16/9; margin:22px auto; display:flex;
+    background:var(--surface); border-radius:16px; overflow:hidden; box-shadow:0 12px 44px rgba(0,0,0,.18);}
+  .sidebar{flex:0 0 256px; background:var(--side); color:var(--side-ink); overflow-y:auto; padding:18px 0;}
+  .sidebar .brand{padding:6px 20px 16px; border-bottom:1px solid #2c3a49; margin-bottom:10px;}
+  .sidebar .brand b{color:#fff; font-size:15px; display:block;}
+  .sidebar .brand span{font-size:11px; color:#7c8b9c;}
+  .nav-group{font-size:10.5px; letter-spacing:.12em; color:#5f6f7e; text-transform:uppercase; padding:14px 20px 5px;}
+  .nav-item{display:flex; gap:10px; align-items:center; padding:9px 20px; cursor:pointer; font-size:13px; border-left:3px solid transparent; transition:all .12s;}
+  .nav-item:hover{background:#27333f; color:#e7edf3;}
+  .nav-item.on{background:#27333f; color:#fff; border-left-color:var(--side-on);}
+  .nav-item .n{flex:0 0 22px; height:22px; border-radius:50%; background:#34434f; color:#cdd6e0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;}
+  .nav-item.on .n{background:var(--side-on); color:#fff;}
+  .content{flex:1; overflow-y:auto; padding:30px 38px 24px;}
+  .panel{display:none; animation:fade .25s ease;}
+  .panel.active{display:block;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+  h2.title{display:flex; align-items:center; gap:14px; margin:0 0 6px; font-size:22px; font-weight:800;}
+  h2.title .badge{flex:0 0 auto; width:40px; height:40px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800;}
+  .lead{color:#5f6f7e; font-size:14px; margin:0 0 16px 54px;}
+  h3{color:var(--secondary); font-size:15px; margin:20px 0 7px; font-weight:700;}
+  p{margin:9px 0; font-size:14px;}
+  code.in{background:var(--muted); padding:1px 6px; border-radius:5px; font-size:12.5px; font-family:'JetBrains Mono','Consolas','D2Coding',monospace,'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif; color:#c0392b;}
+  ul,ol{margin:7px 0; padding-left:20px;} li{margin:4px 0; font-size:13.5px;}
+  pre{position:relative; background:var(--code-bg); color:var(--code-ink); border-radius:9px; padding:14px 16px; overflow-x:auto; font-size:12.2px; line-height:1.55; font-family:'JetBrains Mono','Consolas','D2Coding',monospace,'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif; margin:10px 0;}
+  pre .c{color:#7d8aa0;} pre .k{color:#79c0ff;} pre .s{color:#a5d6a4;}
+  .copy-btn{position:absolute; top:6px; right:6px; background:rgba(255,255,255,0.08); color:#cfd3da; border:1px solid rgba(255,255,255,0.18); padding:3px 9px; border-radius:5px; font-size:11px; cursor:pointer; opacity:0; transition:opacity 0.15s, background 0.15s; font-family:inherit; user-select:none;}
+  pre:hover .copy-btn{opacity:0.85;}
+  .copy-btn:hover{opacity:1 !important; background:rgba(255,255,255,0.18);}
+  .copy-btn.copied{background:#27ae60; color:#fff; border-color:#27ae60; opacity:1 !important;}
+  .ftag{display:inline-block; background:var(--accent); color:#fff; font-size:11px; font-weight:700; padding:3px 10px; border-radius:6px 6px 0 0; font-family:'JetBrains Mono','Consolas',monospace,'Pretendard',sans-serif;}
+  .box{border-left:4px solid var(--primary); background:#f1f8fd; padding:11px 14px; border-radius:0 8px 8px 0; margin:12px 0; font-size:13px;}
+  .box .lbl{font-weight:800; display:block; margin-bottom:3px; color:var(--primary);}
+  .box.tip{border-color:var(--accent); background:#effaf6;} .box.tip .lbl{color:var(--accent);}
+  .box.warn{border-color:var(--warn); background:#fdf0ee;} .box.warn .lbl{color:var(--warn);}
+  .box.ok{border-color:#27ae60; background:#eafaf0;} .box.ok .lbl{color:#27ae60;}
+  table{width:100%; border-collapse:collapse; margin:12px 0; font-size:12.5px;}
+  th,td{border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top;}
+  th{background:var(--muted); font-weight:700;}
+  .tag-ok{color:#27ae60; font-weight:700;} .tag-bad{color:var(--warn); font-weight:700;}
+  .diagram{display:flex; align-items:stretch; gap:0; flex-wrap:wrap; margin:14px 0;}
+  .dbox{flex:1; min-width:150px; border:2px solid var(--primary); border-radius:11px; padding:11px; text-align:center; background:#f7fbfe;}
+  .dbox.hub{border-color:var(--accent); background:#f1faf7;} .dbox.cloud{border-color:var(--secondary); background:#fef6ef;}
+  .dbox .t{font-weight:800; font-size:13px;} .dbox .d{font-size:11px; color:#5f6f7e; margin-top:3px;}
+  .arrow{flex:0 0 44px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#95a5a6; font-size:10px;}
+  .arrow .a{font-size:18px;}
+  /* 진단 타임라인 */
+  .timeline{list-style:none; margin:14px 0 0; padding-left:0;}
+  .timeline li{position:relative; padding:0 0 18px 26px; border-left:2px solid var(--line); margin-left:6px; font-size:13.5px;}
+  .timeline li:last-child{border-left-color:transparent; padding-bottom:4px;}
+  .timeline li::before{content:""; position:absolute; left:-7px; top:4px; width:12px; height:12px; border-radius:50%; background:var(--primary); border:2px solid #fff; box-shadow:0 0 0 1px var(--line);}
+  .timeline .t-step{font-weight:800; color:var(--ink);}
+  .timeline .t-tag{font-size:11px; font-weight:700; color:var(--secondary); background:#fef6ef; border:1px solid #f5d9bd; border-radius:999px; padding:1px 9px; margin-left:8px;}
+  .timeline p{margin:5px 0 0; font-size:13px; color:#4a5a6a;}
+  /* 기준값 카드 */
+  .kgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0;}
+  .kbox{background:#f7fbfe; border:1px solid var(--line); border-radius:10px; padding:11px 13px;}
+  .kbox h4{font-size:11px; color:var(--primary); font-weight:800; margin:0 0 4px; text-transform:uppercase; letter-spacing:.04em;}
+  .kbox .v{font-size:16px; font-weight:800;}
+  .kbox small{display:block; color:#5f6f7e; font-size:11.5px; margin-top:2px; font-weight:500;}
+  .nav-btns{display:flex; justify-content:space-between; margin-top:22px; padding-top:14px; border-top:1px solid var(--line);}
+  .nav-btns button{background:var(--primary); color:#fff; border:0; padding:8px 16px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;}
+  .nav-btns button:disabled{background:#bdc3c7; cursor:default;}
+  .nav-btns button.ghost{background:#fff; color:var(--primary); border:1.5px solid var(--primary);}
+  @media(max-width:860px){
+    .stage{aspect-ratio:auto; flex-direction:column; width:96vw; height:auto;}
+    .sidebar{flex:none; width:100%; display:flex; flex-wrap:wrap; padding:10px;}
+    .sidebar .brand{width:100%;} .nav-group{width:100%;}
+    .nav-item{border-left:0; border-radius:8px; padding:7px 10px;}
+    .content{padding:20px;} .arrow .a{transform:rotate(90deg);}
+    .kgrid{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <aside class="sidebar">
+    <div class="brand"><b>MLX90641 열화상 데모</b><span>운용·트러블슈팅 매뉴얼 · Nano ESP32 + MLX90641 · rev. 2026-07</span></div>
+
+    <div class="nav-group">시작하기</div>
+    <div class="nav-item" data-target="s0"><span class="n">0</span>개요 &amp; 준비물</div>
+    <div class="nav-item" data-target="s1"><span class="n">i</span>전체 구조 한눈에</div>
+
+    <div class="nav-group">① 설치</div>
+    <div class="nav-item" data-target="s2"><span class="n">1</span>라이브러리 설치</div>
+    <div class="nav-item" data-target="s3"><span class="n">2</span>펌웨어 업로드</div>
+
+    <div class="nav-group">② 실행</div>
+    <div class="nav-item" data-target="s4"><span class="n">3</span>동작 점검 (진단)</div>
+    <div class="nav-item" data-target="s5"><span class="n">4</span>UI 실행 (Web Serial)</div>
+    <div class="nav-item" data-target="s6"><span class="n">5</span>정상 동작 기준값</div>
+    <div class="nav-item" data-target="s7"><span class="n">6</span>시리얼 프로토콜·오류 코드</div>
+
+    <div class="nav-group">③ 진단·원리</div>
+    <div class="nav-item" data-target="s8"><span class="n">7</span>진단 타임라인</div>
+    <div class="nav-item" data-target="s9"><span class="n">8</span>라이브러리 이슈 분석</div>
+    <div class="nav-item" data-target="s10"><span class="n">!</span>증상별 진단표</div>
+    <div class="nav-item" data-target="s11"><span class="n">9</span>보정 · 교육 활용</div>
+    <div class="nav-item" data-target="s13"><span class="n">끝</span>정리·보관</div>
+  </aside>
+  <main class="content">
+
+  <!-- s0 개요 & 준비물 -->
+  <section class="panel active" id="s0">
+    <h2 class="title"><span class="badge">0</span>개요 &amp; 준비물</h2>
+    <p class="lead">설치부터 정상 동작 판정, 그리고 초기 구축에서 마주친 두 겹의 소프트웨어 문제(칩 오인 · ESP32 I2C 드라이버 비호환)의 진단 과정과 증상별 해결까지 한 곳에 정리한 운용 문서입니다.</p>
+
+    <h3>무엇을 만드나</h3>
+    <p>MLX90641 적외선 어레이 센서(16×12, 192픽셀)가 읽은 온도 프레임을 <b>Arduino Nano ESP32</b>가 I2C로 읽어 보정 계산한 뒤 USB 시리얼로 PC에 전송하고, 브라우저의 <b>Web Serial</b> HTML 앱이 이를 실시간 열화상으로 렌더링합니다. 클라우드도 모델 학습도 없는, <b>센서 → 보정 → 스트리밍 → 시각화</b>의 순수 측정·시각화 파이프라인입니다.</p>
+
+    <h3>하드웨어</h3>
+    <table>
+      <tr><th>항목</th><th>비고</th></tr>
+      <tr><td>Arduino Nano ESP32</td><td>ESP32-S3 · USB-C</td></tr>
+      <tr><td>Grove Thermal Imaging Camera (MLX90641)</td><td>I2C 주소 <code class="in">0x33</code> · 16×12 (192픽셀)</td></tr>
+      <tr><td>Grove 케이블</td><td>I2C 포트 연결: <b>SDA=A4, SCL=A5</b></td></tr>
+      <tr><td>PC</td><td>Chrome 또는 Edge (Web Serial 필요)</td></tr>
+    </table>
+
+    <h3>소프트웨어 · 라이브러리</h3>
+    <table>
+      <tr><th>도구</th><th>비고</th></tr>
+      <tr><td>Arduino IDE 2.x</td><td>보드 매니저에서 <code class="in">Arduino Nano ESP32</code> 설치</td></tr>
+      <tr><td>MLX9064x_Universal (동봉)</td><td><code class="in">lib/MLX9064x_Universal.zip</code> ZIP 설치 · ESP32 패치본 + 칩 자동판별</td></tr>
+      <tr><td>Chrome / Edge</td><td>Safari·Firefox는 Web Serial 미지원으로 불가</td></tr>
+    </table>
+
+    <div class="box warn"><span class="lbl">⚠️ 주의 — 기존 라이브러리 충돌</span>기존에 <code class="in">Seeed_Arduino_MLX9064x</code> 라이브러리가 설치돼 있으면 내부 헤더명(<code class="in">MLX90640_API.h</code> 등)이 겹쳐 IDE가 엉뚱한 쪽을 컴파일할 수 있습니다. 동봉 라이브러리를 쓰기 전에 기존 라이브러리는 삭제하거나 폴더를 옮겨 두는 것을 권장합니다.</div>
+
+    <h3>이 매뉴얼을 보는 순서</h3>
+    <p>처음 구축이면 왼쪽 메뉴를 <b>위에서부터 차례대로</b>(설치 → 펌웨어 → 점검 → UI) 따라가면 동작합니다. 값이 이상하면 <b>동작 점검(3)</b>과 <b>증상별 진단표(!)</b>로, 원인 배경이 궁금하면 <b>진단 타임라인(7)</b>·<b>라이브러리 이슈 분석(8)</b>을 보세요. 코드 블록 오른쪽 위 <b>📋 복사</b> 버튼으로 내용을 그대로 복사할 수 있습니다.</p>
+  </section>
+
+  <!-- s1 전체 구조 -->
+  <section class="panel" id="s1">
+    <h2 class="title"><span class="badge" style="background:var(--accent)">i</span>전체 구조 한눈에</h2>
+    <p class="lead">데이터가 어디서 만들어져 어디로 흐르는지 먼저 그림으로 잡아두면 이후가 쉽습니다.</p>
+
+    <div class="diagram">
+      <div class="dbox"><div class="t">MLX90641 센서</div><div class="d">16×12 IR 프레임 + Ta + Vdd<br>공장 보정값 EEPROM 내장</div></div>
+      <div class="arrow"><span class="a">→</span><span>I2C · 0x33</span></div>
+      <div class="dbox hub"><div class="t">Nano ESP32</div><div class="d">보정 계산 (방사율 0.95)<br>CSV 한 줄/프레임 송신</div></div>
+      <div class="arrow"><span class="a">→</span><span>USB · 115200</span></div>
+      <div class="dbox cloud"><div class="t">브라우저 Web Serial 앱</div><div class="d">파싱·유효성 게이트<br>캔버스 열화상 · 통계·트렌드</div></div>
+    </div>
+
+<pre> ① 센서 측정        ② 보정 계산        ③ 시리얼 스트리밍     ④ 수신·파싱        ⑤ 시각화
+  16×12 IR 프레임     온도 변환            CSV 한 줄/프레임       Web Serial          캔버스 열화상
+  + Ta + Vdd        (방사율 0.95)        115200bps             깨진 프레임 폐기      통계·트렌드
+ [MLX90641] ─I2C→ [Nano ESP32] ─USB→ START:..:END ─수신→ [브라우저 앱] ─render→ [화면]</pre>
+
+    <h3>각 부분의 역할</h3>
+    <table>
+      <tr><th>구성</th><th>하는 일</th><th>비유</th></tr>
+      <tr><td><b>MLX90641</b></td><td>물체가 내는 적외선을 192개 픽셀로 감지, 원시 데이터와 공장 보정값(EEPROM) 제공</td><td>눈(망막)</td></tr>
+      <tr><td><b>Nano ESP32</b></td><td>I2C로 프레임을 읽어 보정 수학으로 온도(℃)로 변환, 시리얼로 스트리밍</td><td>시신경·번역가</td></tr>
+      <tr><td><b>Web Serial 앱</b></td><td>시리얼 줄을 파싱, 깨진 프레임은 폐기, 컬러맵을 입혀 열화상으로 렌더링</td><td>화가·전광판</td></tr>
+    </table>
+
+    <div class="box"><span class="lbl">시리얼 프로토콜 — 프레임당 한 줄</span>
+    보드는 부팅 시 <code class="in">INFO:CHIP=MLX90641,COLS=16,ROWS=12</code> 한 줄로 칩·해상도를 알리고, 이후 프레임마다 아래 형식의 한 줄을 115200bps로 보냅니다.
+<pre>INFO:CHIP=MLX90641,COLS=16,ROWS=12    <span class="c"># 부팅 1회 — 해상도 자동 통지</span>
+START:<span class="s">t0,t1,t2, ... ,t191</span>:END          <span class="c"># 프레임당 한 줄 (192개 온도값, ℃)</span>
+<span class="c">예) START:25.31,25.28,24.97, ... ,26.02:END</span></pre>
+    UI 앱은 <code class="in">START:</code>로 시작해 <code class="in">:END</code>로 끝나고 값이 정확히 192개인 줄만 화면에 반영합니다(유효성 게이트). 전송 중 깨진 줄은 조용히 버려집니다. 상세 형식과 오류 코드는 <b>패널 6</b> 참조.</div>
+
+    <div class="box tip"><span class="lbl">💡 왜 이렇게 단순한가</span>프로토콜이 사람이 읽을 수 있는 텍스트 한 줄이라, IDE 시리얼 모니터만 열어도 <b>UI 없이 동작을 검증</b>할 수 있습니다(패널 3의 점검). 문제가 생기면 "보드까지는 정상인가 / UI부터 문제인가"를 바로 갈라낼 수 있습니다.</div>
+  </section>
+
+  <!-- s2 라이브러리 설치 -->
+  <section class="panel" id="s2">
+    <h2 class="title"><span class="badge">1</span>라이브러리 설치</h2>
+    <p class="lead">동봉된 ZIP 하나만 설치하면 됩니다. driver.cpp를 손으로 고치는 과거 방식은 더 이상 필요 없습니다.</p>
+
+    <h3>설치 절차 (Arduino IDE)</h3>
+    <ol>
+      <li>Arduino IDE 메뉴에서 <b>스케치 → 라이브러리 포함하기 → .ZIP 라이브러리 추가…</b> 선택</li>
+      <li>저장소의 <code class="in">lib/MLX9064x_Universal.zip</code> 선택 → 설치 완료</li>
+      <li>설치 확인: <b>파일 → 예제 → MLX9064x_Universal</b> 에 <code class="in">01_Diagnostic</code>, <code class="in">02_SerialStream_UI</code>, <code class="in">03_BasicReadings</code> 세 예제가 보이면 정상</li>
+    </ol>
+
+    <div class="box"><span class="lbl">왜 ZIP 한 번이면 끝인가</span>이 ZIP에는 ESP32에서 깨지던 I2C 드라이버를 재작성한 패치본과 <b>칩 자동판별</b>(EEPROM <code class="in">0x240A</code> bit6)이 이미 들어 있습니다. 따라서 <code class="in">driver.cpp</code>를 손으로 고칠 필요가 없고, 라이브러리를 재설치해도 패치가 유실되지 않습니다. 보정 수학(Melexis 공식)은 <b>원본 그대로</b>라 정확도는 보장됩니다.</div>
+
+    <div class="box tip"><span class="lbl">💡 이미 공식 라이브러리가 설치돼 있다면</span>공식 Seeed 라이브러리(<code class="in">Seeed_Arduino_MLX9064x</code>)가 설치된 상태라면 헤더명이 겹쳐 IDE가 엉뚱한 쪽을 컴파일할 수 있습니다. 기존 것을 제거(또는 폴더 이동)한 뒤 ZIP을 설치하세요. 공식판을 그대로 쓰면 ESP32에서 프레임이 동결되는 증상이 납니다(증상별 진단표 참조).</div>
+  </section>
+
+  <!-- s3 펌웨어 업로드 -->
+  <section class="panel" id="s3">
+    <h2 class="title"><span class="badge">2</span>펌웨어 업로드</h2>
+    <p class="lead">스트리밍 펌웨어를 올립니다. 스케치는 래퍼 헤더 하나만 include하면 되고 칩은 자동 판별됩니다.</p>
+
+    <h3>업로드 절차</h3>
+    <ol>
+      <li>Grove 케이블로 센서를 <b>I2C 포트(SDA=A4, SCL=A5)</b>에 연결하고 전원 LED를 확인합니다.</li>
+      <li><code class="in">firmware/mlx90641_serial.ino</code>를 엽니다 (라이브러리 예제 <code class="in">02_SerialStream_UI</code>와 동일 — <b>파일 → 예제 → MLX9064x_Universal</b>에서도 열 수 있음).</li>
+      <li>보드 <b>Arduino Nano ESP32</b> 선택, 포트 선택 후 <b>업로드</b>.</li>
+      <li>스케치는 래퍼 헤더 <code class="in">MLX9064x_Universal.h</code> <b>하나만</b> include 하면 되고, 칩(90641/90640)은 <b>자동 판별</b>되므로 직접 고를 필요가 없습니다.</li>
+    </ol>
+
+    <h3>핵심 동작 (스케치 요약)</h3>
+    <span class="ftag">firmware/mlx90641_serial.ino</span>
+<pre><span class="c">#include &lt;MLX9064x_Universal.h&gt;</span>
+MLX9064xUniversal cam;
+float frame[MLX9064X_MAX_PIXELS];   <span class="c">// 어느 칩이든 안전한 크기(768)</span>
+
+void setup() {
+  Serial.begin(115200);
+  cam.begin();                      <span class="c">// Wire 초기화 + 자동판별 + 보정 로드</span>
+  cam.setRefreshRate(MLX9064X_RATE_8HZ);
+  <span class="c">// 부팅 1회: INFO:CHIP=MLX90641,COLS=16,ROWS=12</span>
+}
+
+void loop() {
+  if (cam.readFrame(frame) != 0) return;          <span class="c">// 실패 시 ERR_FRAME</span>
+  Serial.print("START:");
+  for (uint16_t i=0; i&lt;cam.pixelCount(); i++) {   <span class="c">// 192 또는 768 자동</span>
+    Serial.print(frame[i], 2);
+    if (i &lt; cam.pixelCount()-1) Serial.print(",");
+  }
+  Serial.println(":END");
+}</pre>
+
+    <div class="box ok"><span class="lbl">✅ 업로드 후 1차 확인</span>시리얼 모니터(115200)에서 부팅 시 <code class="in">INFO:CHIP=MLX90641,COLS=16,ROWS=12</code> 한 줄 → 이어서 <code class="in">START:25.31,…:END</code> 줄이 끊김 없이 흐르고 값이 실온(20~30℃)이면 정상입니다. 센서 앞에 손을 대면 해당 구간 값이 33℃ 안팎으로 올라야 합니다.</div>
+    <div class="box warn"><span class="lbl">⚠️ 값이 이상하면</span>전 픽셀 NaN, Vdd=inf, 수천 ℃ 같은 가짜 값, 프레임마다 동일한 동결 값이 보이면 하드웨어가 아니라 <b>라이브러리 문제</b>일 가능성이 높습니다. 다음 패널(동작 점검)과 증상별 진단표(!)를 따라가세요.</div>
+  </section>
+
+  <!-- s4 동작 점검 (진단) -->
+  <section class="panel" id="s4">
+    <h2 class="title"><span class="badge">3</span>동작 점검 (진단)</h2>
+    <p class="lead">스트리밍 펌웨어를 올리기 전(또는 값이 의심될 때) 다음 두 가지로 단계적으로 점검합니다.</p>
+
+    <h3>A. 라이브러리 무관 raw 점검 — i2c_diagnostic.ino</h3>
+    <p><code class="in">Wire.h</code>만 사용하는 30초 진단 스케치(<code class="in">firmware/i2c_diagnostic.ino</code>)입니다. 시리얼 모니터(115200)에서:</p>
+    <table>
+      <tr><th>출력</th><th>의미</th></tr>
+      <tr><td><code class="in">ACK: OK</code></td><td>0x33 응답 — 배선·전원 정상</td></tr>
+      <tr><td><code class="in">0x240A=0x.... -&gt; MLX90641(16x12)</code></td><td>EEPROM bit6 기반 칩 판별 결과</td></tr>
+      <tr><td><code class="in">재독취 일치(통신 OK)</code></td><td>같은 레지스터 2회 값 일치 — 신호 무결성</td></tr>
+    </table>
+
+    <h3>B. 라이브러리 예제 — 01_Diagnostic</h3>
+    <p>자동판별·보정까지 포함해 프레임 품질을 봅니다. 한 줄 출력 예:</p>
+<pre>Vdd=3.18V Ta= 28.4C | center=  24.9 min=  23.1 max=  25.7 NaN=0</pre>
+    <p>센서에 손을 대면 <code class="in">center</code>·<code class="in">max</code>가 33~36℃로 반응해야 정상입니다. 오류 시 <code class="in">readFrame ERR &lt;code&gt;</code> / <code class="in">begin() FAILED, lastError=&lt;code&gt;</code> 형태로 코드를 출력합니다(코드표는 패널 6 참조).</p>
+
+    <div class="box tip"><span class="lbl">💡 진단 순서 요약</span>① <code class="in">i2c_diagnostic.ino</code>로 배선(ACK)·칩(bit6)·통신(재독취) 3종 점검 → ② <code class="in">01_Diagnostic</code> 또는 시리얼 모니터에서 <code class="in">START:...:END</code>와 실온값 확인 → ③ 그다음에 UI를 붙입니다. 층을 나눠 확인하면 원인 구간이 바로 좁혀집니다.</div>
+  </section>
+
+  <!-- s5 UI 실행 -->
+  <section class="panel" id="s5">
+    <h2 class="title"><span class="badge">4</span>UI 실행 (Web Serial)</h2>
+    <p class="lead">브라우저에서 HTML 파일 하나만 열면 됩니다. 서버도 설치도 필요 없습니다.</p>
+
+    <h3>실행 순서</h3>
+    <ol>
+      <li><b>IDE 시리얼 모니터를 닫습니다.</b> 열려 있으면 포트를 점유해 UI가 연결되지 않습니다 (가장 흔한 실패 원인).</li>
+      <li><code class="in">ui/mlx90641_thermal_ui.html</code>을 Chrome/Edge에서 엽니다 (더블클릭, 서버 불필요). 또는 <a href="https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/ui/mlx90641_thermal_ui.html" target="_blank" rel="noopener">GitHub Pages 버전</a>을 바로 열어도 됩니다.</li>
+      <li>통신 속도 <code class="in">115200</code> 확인 → <b>장치 연결</b> 클릭 → 팝업에서 Nano ESP32 포트 선택.</li>
+      <li>센서 앞에 손을 비추면 핫스팟 십자선(H)이 손을 따라가고 최고 온도가 <b>33~36℃</b>를 표시해야 합니다.</li>
+    </ol>
+
+    <div class="box ok"><span class="lbl">✅ 정상 신호</span>부팅 직후 <code class="in">INFO:CHIP=...</code> 한 줄, 이어서 <code class="in">START:...:END</code> 프레임이 끊김 없이 흐르고, 배경 픽셀이 실온±2℃에서 미세하게 요동치면 정상입니다.</div>
+
+    <div class="box warn"><span class="lbl">⚠️ 가장 흔한 연결 실패 원인 — 포트 점유</span>Arduino IDE의 <b>시리얼 모니터가 열려 있으면 포트를 점유</b>해서 브라우저가 같은 포트를 열 수 없습니다. UI에서 포트가 안 보이거나 연결이 거부되면 제일 먼저 시리얼 모니터(및 시리얼 플로터)를 닫으세요. Safari·Firefox는 Web Serial을 지원하지 않아 동작하지 않습니다.</div>
+
+    <h3>UI 화면 구성</h3>
+    <table>
+      <tr><th>영역</th><th>기능</th></tr>
+      <tr><td>포트 제어 및 장치 연결</td><td>통신 속도 선택(기본 115200bps) · <b>장치 연결 / 연결 끊기</b> · 연결 상태 표시</td></tr>
+      <tr><td>가상 시뮬레이터</td><td>센서 없이 시연 가능한 가상 열원(가우시안 열원 2개가 궤도를 돎, ~8FPS) — 수업 전 리허설용</td></tr>
+      <tr><td>컬러 맵 4종</td><td>Ironbow(기본) / Jet(레인보우) / Medical(적/청) / Grayscale(흑백)</td></tr>
+      <tr><td>렌더링 보간 필터</td><td>Bilinear Interpolation 토글 — OFF 시 MLX90641 고유의 16×12 픽셀이 계단현상 그대로 표시 (수업에선 OFF도 유용)</td></tr>
+      <tr><td>온도 스케일 모드</td><td>자동 스케일 / 수동(최저·최고 온도 직접 입력) 전환 + 색 범례 바</td></tr>
+      <tr><td>화면 분석 레이아웃</td><td>최대(H)·최소(C) 온도 자동 추적 십자선 · 중앙 정렬 점 및 고정 십자선</td></tr>
+      <tr><td>통계 카드</td><td>최고 온도 · 최저 온도 · 중앙점 온도 · 온도 편차(ΔT) 실시간 표시</td></tr>
+      <tr><td>트렌드 차트</td><td>최고 온도 트렌드 레코드(실시간 로그) + 기록 초기화</td></tr>
+    </table>
+
+    <div class="box tip"><span class="lbl">💡 수업 전 리허설</span>센서를 아직 연결하지 못했을 때는 <b>가상 시뮬레이터</b>를 켜서 화면 구성·컬러맵·통계 카드를 미리 시연해 볼 수 있습니다.</div>
+  </section>
+
+  <!-- s6 정상 동작 기준값 -->
+  <section class="panel" id="s6">
+    <h2 class="title"><span class="badge">5</span>정상 동작 기준값</h2>
+    <p class="lead">Nano ESP32 + Grove MLX90641 실측 기준입니다. 이 범위를 벗어나면 증상별 진단표(!)를 확인하세요.</p>
+
+    <div class="kgrid">
+      <div class="kbox"><h4>Vdd</h4><div class="v">3.0 ~ 3.3 V</div><small>전원 전압</small></div>
+      <div class="kbox"><h4>Ta</h4><div class="v">실온 +3 ~ +8 ℃</div><small>센서 주변온도(자체 발열 반영)</small></div>
+      <div class="kbox"><h4>배경 픽셀</h4><div class="v">실온 ±2 ℃</div><small>손·열원 없을 때</small></div>
+      <div class="kbox"><h4>손 표면</h4><div class="v">33 ~ 36 ℃</div><small>핫스팟 max 기준</small></div>
+      <div class="kbox"><h4>NaN 픽셀</h4><div class="v">0 개</div><small>1개라도 있으면 비정상</small></div>
+      <div class="kbox"><h4>프레임 간 요동</h4><div class="v">±0.1 ~ 0.3 ℃</div><small>자연 노이즈</small></div>
+    </div>
+
+    <div class="box warn"><span class="lbl">⚠️ 핵심 판별</span>프레임마다 값이 <b>완전히 동일하게 반복</b>되면(요동 0) 센서가 갱신되지 않는 것이며, 이는 ESP32 I2C 드라이버 문제로 인한 <b>동결(frozen) 프레임</b>의 전형적 징후입니다. 라이브러리 이슈 분석(8) 참조.</div>
+  </section>
+
+  <!-- s7 시리얼 프로토콜 · 오류 코드 -->
+  <section class="panel" id="s7">
+    <h2 class="title"><span class="badge">6</span>시리얼 프로토콜 · 오류 코드</h2>
+    <p class="lead">보드가 내보내는 모든 줄의 형식과, 오류 시 출력되는 lastError() 코드표입니다.</p>
+
+    <h3>스트리밍 포맷 (115200bps)</h3>
+    <table>
+      <tr><th>줄</th><th>형식</th><th>설명</th></tr>
+      <tr><td>부팅 1회</td><td><code class="in">INFO:CHIP=MLX90641,COLS=16,ROWS=12</code></td><td>해상도 자동 통지 — UI 자동 적응에 활용 가능</td></tr>
+      <tr><td>프레임</td><td><code class="in">START:t0,t1,...,tN:END</code></td><td>N+1 = 픽셀 수, 칩에 따라 <b>192</b>(90641) / <b>768</b>(90640) 자동</td></tr>
+      <tr><td>프레임 오류</td><td><code class="in">ERR_FRAME:&lt;code&gt;</code></td><td>readFrame I2C 실패 — 50ms 후 재시도</td></tr>
+      <tr><td>초기화 실패</td><td><code class="in">ERR_INIT:&lt;code&gt;</code></td><td>begin() 실패 — 1초 간격 반복 출력</td></tr>
+    </table>
+
+    <h3>lastError() 코드</h3>
+    <table>
+      <tr><th>코드</th><th>의미</th><th>1차 점검</th></tr>
+      <tr><td><code class="in">-10</code></td><td>배선/전원 (0x33 무응답)</td><td>Grove I2C 포트(A4/A5)·전원 LED·케이블</td></tr>
+      <tr><td><code class="in">-12</code></td><td>EEPROM 읽기 실패</td><td>I2C 신호 무결성, 클럭 하향(400k→100k)</td></tr>
+      <tr><td><code class="in">-13</code></td><td>보정 파라미터 추출 실패</td><td>칩-API 불일치 / EEPROM 손상</td></tr>
+      <tr><td><code class="in">-20</code></td><td>프레임 I2C 실패</td><td>케이블 길이·노이즈, 클럭 하향</td></tr>
+    </table>
+  </section>
+
+  <!-- s8 진단 타임라인 -->
+  <section class="panel" id="s8">
+    <h2 class="title"><span class="badge">7</span>진단 타임라인 — 무엇이 문제였나</h2>
+    <p class="lead">초기 구축에서 화면에는 H:7,844℃ 같은 말도 안 되는 핫스팟과 다수의 NaN·Vdd=inf가 떴습니다. 원인은 하드웨어가 아니라 두 겹의 소프트웨어 문제였고, 다음 순서로 좁혀 나갔습니다.</p>
+
+    <ul class="timeline">
+      <li><span class="t-step">증상 포착</span><span class="t-tag">2026-06</span>
+        <p>전 픽셀 NaN·<code class="in">Vdd=inf</code>, 가끔 <code class="in">H:7844℃</code>의 가짜 핫스팟. 배선을 여러 번 점검해도 동일 → 하드웨어 단독 원인 가능성 배제.</p></li>
+      <li><span class="t-step">① 칩 오인 발견</span><span class="t-tag">근본원인 1</span>
+        <p>모듈을 MLX90640(32×24)으로 가정하고 90640 API를 쓰고 있었으나, EEPROM <code class="in">0x240A</code> bit6을 직접 읽어 보니 실제 칩은 <b>MLX90641(16×12)</b>이었다. 칩-API 불일치는 보정 추출을 망가뜨려 <code class="in">Vdd=inf</code>·전픽셀 NaN을 만든다. → <b>MLX90641 API로 전환</b>.</p></li>
+      <li><span class="t-step">② ESP32 I2C 드라이버 비호환</span><span class="t-tag">근본원인 2</span>
+        <p>API를 맞췄는데도 <b>프레임이 동결</b>(매 프레임 동일한 쓰레기 값)됐다. 공식/Seeed 드라이버의 I2C 읽기가 ESP32 Wire에서 <b>NACK인데도 성공으로 보고</b>하고 <code class="in">requestFrom</code> 수신량을 검증하지 않아, 부분 수신·이전 데이터 잔류가 발생. → <code class="in">I2CRead</code>를 로컬 패치(실패를 -1로 반환 + 수신량 엄격 검증 + 16워드 청크).</p></li>
+      <li><span class="t-step">재발 방지 + UI 보강</span><span class="t-tag">대책</span>
+        <p>두 수정을 한 라이브러리로 묶고(<code class="in">MLX9064x_Universal</code>) <b>칩 자동판별</b>을 더해 칩 오인을 원천 차단. UI에는 <b>유효성 게이트</b>(깨진 프레임 폐기)와 컬러맵·보간·시뮬레이터를 구성.</p></li>
+    </ul>
+
+    <div class="box tip"><span class="lbl">💡 교훈</span>열화상 값이 물리적으로 불가능하면(수천 ℃, NaN) 배선보다 <b>칩 판별과 라이브러리</b>부터 의심하세요.</div>
+  </section>
+
+  <!-- s9 라이브러리 이슈 분석 -->
+  <section class="panel" id="s9">
+    <h2 class="title"><span class="badge">8</span>라이브러리 이슈 분석 (원본 vs 동봉 패치본)</h2>
+    <p class="lead">동봉 MLX9064x_Universal은 Seeed/Melexis 원본의 결함만 교체한 포크입니다. 보정 수학은 손대지 않았습니다.</p>
+
+    <table>
+      <tr><th>항목</th><th>원본 (Seeed_Arduino_MLX9064x)</th><th>동봉 패치본</th></tr>
+      <tr><td>I2C 읽기 실패(NACK)</td><td class="tag-bad"><code class="in">return 0</code> — 실패를 성공으로 보고</td><td class="tag-ok"><code class="in">-1</code> 반환, 호출부 재시도 가능</td></tr>
+      <tr><td><code class="in">requestFrom</code> 수신량</td><td class="tag-bad">미검증 → 부분 수신 시 이전/0xFF 잔류</td><td class="tag-ok">바이트 수 엄격 검증, 미달 시 오류</td></tr>
+      <tr><td>청크 크기</td><td class="tag-bad">플랫폼 매크로 의존(충돌 가능)</td><td class="tag-ok">16워드(32바이트) 고정 — 전 플랫폼 안전</td></tr>
+      <tr><td>칩 선택</td><td class="tag-bad">사용자가 90640/90641 직접 선택(틀리면 Vdd=inf)</td><td class="tag-ok">EEPROM 0x240A bit6 <b>자동판별</b></td></tr>
+      <tr><td>보정 수학</td><td>Melexis 공식</td><td class="tag-ok"><b>동일 (무수정)</b> — 정확도 보장</td></tr>
+    </table>
+
+    <div class="box"><span class="lbl">칩 판별 원리</span>EEPROM 워드 <code class="in">0x240A</code>의 bit6(deviceSelect): <code class="in">1</code> = MLX90641(16×12, 192px), <code class="in">0</code> = MLX90640(32×24, 768px). 펌웨어가 런타임에 이 비트를 읽어 올바른 API를 선택하므로, 같은 스케치가 두 모듈에서 수정 없이 동작합니다.</div>
+  </section>
+
+  <!-- s10 증상별 진단표 -->
+  <section class="panel" id="s10">
+    <h2 class="title"><span class="badge" style="background:var(--warn)">!</span>증상별 진단표</h2>
+    <p class="lead">증상을 먼저 찾고 오른쪽의 원인/해결을 순서대로 시도하세요. 배경이 궁금하면 진단 타임라인(7)·라이브러리 이슈 분석(8)을 참조.</p>
+
+    <table>
+      <tr><th>증상</th><th>원인 / 해결</th></tr>
+      <tr><td>전 픽셀 NaN, <code class="in">Vdd=inf</code></td>
+          <td>칩-API 불일치 (동봉 라이브러리는 자동판별로 예방). 다른 MLX 라이브러리 혼용 여부 확인 → <code class="in">MLX9064x_Universal.zip</code>만 사용.</td></tr>
+      <tr><td>프레임마다 동일한 비정상 값(동결)</td>
+          <td>공식/구버전 드라이버 사용 중 → <code class="in">lib/MLX9064x_Universal.zip</code>(패치본)으로 재설치.</td></tr>
+      <tr><td>컴파일 시 <code class="in">... .h: No such file</code></td>
+          <td>스케치는 <code class="in">MLX9064x_Universal.h</code> <b>하나만</b> include (내부 API 헤더 직접 포함 불필요). 구버전 Seeed 라이브러리 잔존 시 삭제.</td></tr>
+      <tr><td>0x33 미검출 (<code class="in">ACK: FAIL</code> / <code class="in">lastError=-10</code>)</td>
+          <td>Grove 케이블을 I2C 포트(A4/A5)에 연결했는지·전원 LED·케이블 단선 확인, 케이블 교체.</td></tr>
+      <tr><td>간헐적 <code class="in">ERR_FRAME</code> / <code class="in">-20</code></td>
+          <td>I2C 클럭 400k→100kHz 하향, 케이블 최단화·노이즈 차단.</td></tr>
+      <tr><td>UI에서 포트가 안 보임</td>
+          <td>IDE 시리얼 모니터 닫기, Chrome/Edge인지 확인, 케이블 재연결(데이터용 USB-C인지 확인).</td></tr>
+      <tr><td>연결은 되는데 화면이 안 변함</td>
+          <td>통신 속도 115200 확인, 부팅 <code class="in">INFO:</code>/<code class="in">START:</code> 수신 여부 확인, 보간 OFF로 원본 프레임 점검.</td></tr>
+      <tr><td>손을 대도 온도가 안 오름</td>
+          <td>방사율 설정 확인(피부 0.97~0.98), 센서 렌즈 가림·거리 확인, 컬러맵 자동 스케일이 배경에 묶였는지 점검.</td></tr>
+    </table>
+  </section>
+
+  <!-- s11 보정 · 교육 활용 -->
+  <section class="panel" id="s11">
+    <h2 class="title"><span class="badge">9</span>보정 · 교육 활용</h2>
+    <p class="lead">숫자가 어떻게 온도가 되는지 — 방사율·교정의 원리와 수업 활용 포인트를 정리합니다.</p>
+
+    <h3>기본 보정값</h3>
+    <ul>
+      <li><b>방사율(emissivity)</b> 0.95 기본. 피부는 0.97~0.98, 금속면은 별도 보정 필요.</li>
+      <li><b>TA_SHIFT</b> 8 기본. 정밀 측정 시 기준 온도계로 1점 교정.</li>
+      <li>API: <code class="in">cam.setEmissivity(float)</code> · <code class="in">cam.setTaShift(float)</code> · <code class="in">cam.getTa()</code> / <code class="in">cam.getVdd()</code></li>
+    </ul>
+
+    <div class="box tip"><span class="lbl">💡 정밀 측정 — 1점 교정</span>정밀하게 재야 한다면 기준 온도계(예: 접촉식)로 한 지점의 실제 온도를 재고, 열화상 표시값과의 차이만큼 오프셋을 맞추는 <b>1점 교정</b>을 하세요.</div>
+
+    <h3>칩 판별 — 90641인가 90640인가</h3>
+    <p>MLX90641(16×12)과 MLX90640(32×24)은 같은 I2C 주소(<code class="in">0x33</code>)를 쓰는 형제 칩이라 겉으로 구분이 어렵습니다. 판별 기준은 EEPROM <code class="in">0x240A</code> bit6이며, 동봉 라이브러리가 자동으로 판별합니다(상세는 패널 8). 직접 확인하려면 <code class="in">i2c_diagnostic.ino</code>를 쓰세요.</p>
+
+    <h3>교육 포인트 — 흑체복사·적외선 단원과 연결</h3>
+    <ul>
+      <li>모든 물체는 온도에 따라 적외선을 방출한다(흑체복사) — 센서는 이 복사를 192개 픽셀로 잰다.</li>
+      <li>UI에서 <b>보간 OFF + 수동 스케일</b>로 두면 손·금속·유리의 온도가 다르게 보이는 이유(방사율 차이)를 흑체복사·적외선·방사율 단원과 직접 연결해 토론할 수 있다.</li>
+      <li>같은 실제 온도라도 방사율이 낮은 금속은 더 차갑게 측정되는 현상을 직접 확인시키는 활동이 가능하다 — "카메라가 온도를 찍는다"가 아니라 "복사 에너지를 재서 온도로 <b>계산</b>한다"는 점을 체감시킨다.</li>
+    </ul>
+  </section>
+
+  <!-- s13 정리·보관 -->
+  <section class="panel" id="s13">
+    <h2 class="title"><span class="badge" style="background:#922B21">끝</span>정리·보관</h2>
+    <p class="lead">데모를 마치고 장비를 정리하는 순서입니다. 특별한 초기화 절차는 필요 없습니다.</p>
+
+    <h3>연결 해제 순서</h3>
+    <ol>
+      <li><b>UI 연결 해제</b> — 브라우저 앱에서 <b>연결 끊기</b>(또는 탭 닫기). 포트가 정상적으로 반납됩니다.</li>
+      <li><b>USB 분리</b> — Nano ESP32의 USB-C 케이블을 뽑습니다. 펌웨어는 보드에 남아 있어 다음에 꽂으면 바로 스트리밍을 재개합니다.</li>
+      <li><b>센서 분리·보관</b> — Grove 케이블을 뽑고, 센서는 렌즈(적외선 창)에 지문·먼지가 닿지 않게 보관합니다.</li>
+    </ol>
+
+    <h3>다음 수업을 위한 팁</h3>
+    <ul>
+      <li>펌웨어·라이브러리는 그대로 두면 됩니다 — 다음에 USB만 꽂으면 즉시 동작합니다.</li>
+      <li>보드를 다른 프로젝트에 쓰려면 Arduino IDE에서 빈 스케치(File → Examples → 01.Basics → <b>BareMinimum</b>)를 업로드하면 됩니다.</li>
+    </ul>
+
+    <div class="box ok"><span class="lbl">✅ 정리 체크리스트</span>① UI 연결 해제 → ② USB 분리 → ③ 센서 렌즈 보호해 보관. 소프트웨어 쪽은 지울 것이 없습니다(모두 파일 몇 개와 라이브러리 하나).</div>
+
+    <p style="margin-top:16px;font-size:12.5px;color:#7c8b9c;">관련 문서 — <a href="index.html">프로젝트 개요</a> · <a href="https://github.com/xparapx/Arduino_Thermal_MLX90641_Demo" target="_blank" rel="noopener">README (GitHub)</a> · <a href="ui/mlx90641_thermal_ui.html">UI 앱</a></p>
+  </section>
+
+    <div class="nav-btns">
+      <button id="prevBtn" class="ghost">← 이전</button>
+      <button id="nextBtn">다음 →</button>
+    </div>
+  </main>
+</div>
+
+<script>
+  const order = ['s0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10', 's11', 's13'];
+  const items = document.querySelectorAll('.nav-item');
+  const panels = document.querySelectorAll('.panel');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  let idx = 0;
+
+  function show(i){
+    idx = Math.max(0, Math.min(order.length-1, i));
+    const id = order[idx];
+    panels.forEach(p => p.classList.toggle('active', p.id === id));
+    items.forEach(n => n.classList.toggle('on', n.dataset.target === id));
+    prevBtn.disabled = (idx === 0);
+    nextBtn.disabled = (idx === order.length-1);
+    document.querySelector('.content').scrollTop = 0;
+  }
+  items.forEach(n => n.addEventListener('click', () => show(order.indexOf(n.dataset.target))));
+  prevBtn.addEventListener('click', () => show(idx-1));
+  nextBtn.addEventListener('click', () => show(idx+1));
+  show(0);
+
+  // 모든 코드 블록에 복사 버튼 자동 부착
+  document.querySelectorAll('pre').forEach(pre => {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn'; btn.type = 'button'; btn.textContent = '📋 복사';
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const code = Array.from(pre.childNodes)
+        .filter(n => n.nodeType===3 || (n.nodeType===1 && !n.classList.contains('copy-btn')))
+        .map(n => n.textContent).join('');
+      try {
+        await navigator.clipboard.writeText(code);
+        btn.textContent = '✓ 복사됨'; btn.classList.add('copied');
+      } catch(err) {
+        const ta = document.createElement('textarea');
+        ta.value = code; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); btn.textContent='✓ 복사됨'; btn.classList.add('copied'); }
+        catch(_) { btn.textContent='실패'; }
+        document.body.removeChild(ta);
+      }
+      setTimeout(() => { btn.textContent='📋 복사'; btn.classList.remove('copied'); }, 1500);
+    });
+    pre.appendChild(btn);
+  });
+</script>
+</body>
+</html>
