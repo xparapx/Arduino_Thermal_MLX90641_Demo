@@ -2,8 +2,8 @@
 
 > 적외선 어레이 센서가 읽은 16×12 온도장을 Nano ESP32가 **보정·스트리밍**하고, 브라우저 **Web Serial 앱**이 실시간 열화상으로 렌더링하는 센서 시각화 프로젝트. 고등학교 SW·AI 융합수업용.
 
-🔗 **프로젝트개요:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/
-🖥️ **WebUI:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/ui/mlx90641_thermal_ui.html
+🔗 **프로젝트개요:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/  
+🖥️ **WebUI:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/ui/mlx90641_thermal_ui.html  
 📘 **매뉴얼:** https://xparapx.github.io/Arduino_Thermal_MLX90641_Demo/manual.html
 
 `MLX90641` · `Arduino Nano ESP32` · `I2C` · `Web Serial API` · `Canvas` · `흑체복사·적외선`
